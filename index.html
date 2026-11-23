@@ -45,7 +45,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .gear{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:10px;color:#C9A968}.gear svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7}.gear:hover{background:#13213A}.gear.on{background:#13213A;box-shadow:inset 0 -2px 0 #C9A968}
 .hday{font-size:12px;font-weight:700;color:var(--mut);margin:18px 2px 6px}.row.hrow{grid-template-columns:44px minmax(0,1fr) auto;align-items:start}.hrow .hr{font-size:12px;color:var(--mut);font-variant-numeric:tabular-nums;padding-top:2px;align-self:start}.hc{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px;margin-right:6px;vertical-align:1px;background:var(--sf2);color:var(--mut)}.hc-receb{background:light-dark(#E3F2E8,#12301F);color:var(--ok)}.hc-emp{background:light-dark(#FBF0D9,#3A2C0C);color:var(--warn)}.hc-reneg{background:light-dark(#E1EBF6,#14263D);color:light-dark(#1F4E79,#8DB8E8)}.hc-caixa{background:light-dark(#FCE6DA,#3B1D10);color:var(--late)}.hc-pessoal{background:light-dark(#ECE8F7,#231D3D);color:var(--park)}.hc-capital{background:light-dark(#F3ECDC,#2E2716);color:light-dark(#7A5E1E,#D9BE80)}.htools{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin:12px 0}.htools select,.htools input{min-height:44px}.lnk{background:none;border:0;padding:0;font:inherit;color:var(--gold);text-decoration:underline;cursor:pointer;min-height:0}@media(max-width:480px){.row.hrow{grid-template-columns:40px minmax(0,1fr)}.row.hrow .val{grid-column:2;text-align:left}}.hdiff td{vertical-align:top}.hdiff .de{color:var(--mut);text-decoration:line-through}.hdet{white-space:pre-line}
 .mrow{grid-template-columns:minmax(0,1fr) auto;align-items:start}.mrow.cur{background:var(--sf2)}.mrow .val{padding-top:2px}.mbar{display:flex;height:8px;border-radius:5px;background:light-dark(#E9F4EE,#12301F);overflow:hidden;margin:8px 0 6px;max-width:520px}.mbar i{display:block;height:100%}.mbar .c,.d.c{background:var(--late)}.mbar .a,.d.a{background:var(--gold)}.mbar .o,.d.o{background:var(--mut)}.d.r{background:var(--ok)}.mleg{display:flex;flex-wrap:wrap;gap:2px 12px;font-size:12.5px;color:var(--mut)}.mleg span{white-space:nowrap}.d{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:0}
-.contas{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:6px}.conta{background:var(--sf);border:1px solid var(--line);border-radius:12px;padding:12px 14px}.conta span{display:block;font-size:12px;color:var(--mut);margin-bottom:2px}.conta b{font-size:18px;font-variant-numeric:tabular-nums}.conta-tr{min-height:58px;justify-content:center}.cted{display:grid;gap:8px}.cthead,.ctrow{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 48px;gap:8px;align-items:center}.cthead span{font-size:12px;color:var(--mut)}.ctrow .del{height:48px;min-height:48px;padding:0;justify-content:center;font-size:20px}
+.contas{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:6px}.conta{background:var(--sf);border:1px solid var(--line);border-radius:12px;padding:12px 14px}.conta span{display:block;font-size:12px;color:var(--mut);margin-bottom:2px}.conta b{font-size:18px;font-variant-numeric:tabular-nums}.conta-tr{min-height:58px;justify-content:center}.ctnow{display:grid;gap:4px;font-size:14px;margin-top:4px}.ctnow b{font-weight:600}.cted{display:grid;gap:8px}.cthead,.ctrow{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 48px;gap:8px;align-items:center}.cthead span{font-size:12px;color:var(--mut)}.ctrow .del{height:48px;min-height:48px;padding:0;justify-content:center;font-size:20px}
 .bars .b{height:10px;border-radius:6px;background:var(--sf2);overflow:hidden;margin-top:6px}.bars .b i{display:block;height:100%;background:var(--gold);border-radius:6px}
 .mnav{display:flex;align-items:center;gap:6px;flex:none}.mnav b{min-width:92px;text-align:center;font-family:'Playfair Display',serif;font-size:18px}
 .sync{font-size:12px;color:#AEB5C4;display:flex;align-items:center;gap:6px}
@@ -343,15 +343,28 @@ const ctNome = (t, id) => { const ks = ctList(t); return (ks.find(k => k.id === 
 const ctOpts = (t, sel) => ctList(t).map(k => `<option value="${esc(k.id)}"${k.id === sel ? ' selected' : ''}>${esc(k.nome)}</option>`).join('');
 const ctEspecie = t => ctList(t).find(k => /esp[eé]cie|dinheiro/i.test(k.nome))?.id;
 const ctPadraoE = forma => (forma === 'Dinheiro' && ctEspecie('e')) || CT_E()[0].id;
-function saldosEmp(fim) {
-  const c = cfg(), ini = c.dataSaldo, ks = CT_E(), o = {}; for (const k of ks) o[k.id] = +k.saldo || 0;
-  const add = (id, v) => { o[id in o ? id : ks[0].id] += v; };
-  for (const p of S.pag) if (p.data >= ini && p.data <= fim) add(p.conta, (+p.valor || 0) + (+p.amort || 0) + (+p.mora || 0));
-  for (const L of S.emp) if (!L.importado && !L.reneg && L.data >= ini && L.data <= fim) add(L.conta, -(+L.valor || 0));
-  for (const m of S.cx) if (m.data >= ini && m.data <= fim) { const v = +m.valor || 0;
-    if (m.tipo === 'transf') { add(m.conta, -v); add(m.contaDest, v); } else add(m.conta, (m.tipo === 'aporte' || m.tipo === 'ajuste+' ? 1 : -1) * v); }
-  return o;
+function fluxosEmp(fim) { // tudo que mexe nas contas da empresa depois do fim do dia do saldo inicial
+  const c = cfg(), ini = c.dataSaldo, out = [], cn = id => esc(cliNome(S.emp.find(l => l.id === id)?.cliente));
+  for (const p of S.pag) if (p.data > ini && p.data <= fim) out.push({ conta: p.conta, v: (+p.valor || 0) + (+p.amort || 0) + (+p.mora || 0), data: p.data, d: 'Recebimento · ' + cn(p.emp) });
+  for (const L of S.emp) if (!L.importado && !L.reneg && L.data > ini && L.data <= fim) out.push({ conta: L.conta, v: -(+L.valor || 0), data: L.data, d: 'Empréstimo concedido · ' + esc(cliNome(L.cliente)) });
+  for (const m of S.cx) if (m.data > ini && m.data <= fim) { const v = +m.valor || 0, d = (HTIPC[m.tipo] || 'Movimento') + (m.desc ? ' · ' + esc(m.desc) : '');
+    if (m.tipo === 'transf') { out.push({ conta: m.conta, v: -v, data: m.data, d }); out.push({ conta: m.contaDest, v, data: m.data, d }); }
+    else out.push({ conta: m.conta, v: (m.tipo === 'aporte' || m.tipo === 'ajuste+' ? 1 : -1) * v, data: m.data, d }); }
+  return out;
 }
+function fluxosPes(fim) {
+  const c = pesCfg(), out = [];
+  for (const l of S.pl) { if (l.data <= c.dataSaldo || l.data > fim) continue; const v = +l.valor || 0, d = (l.tipo === 'cartao' ? 'Fatura ' + esc(l.cartao || '') : TIPOL[l.tipo]) + (l.desc ? ' · ' + esc(l.desc) : '');
+    if (l.tipo === 'receita' || l.tipo === 'entrada' || l.tipo === 'resgate') out.push({ conta: l.conta, v, data: l.data, d });
+    else if (l.tipo === 'aporte' || l.tipo === 'saida' || (l.tipo === 'cartao' && l.pago)) out.push({ conta: l.conta, v: -v, data: l.data, d });
+    else if (l.tipo === 'transf') { out.push({ conta: l.conta, v: -v, data: l.data, d }); out.push({ conta: l.contaDest, v, data: l.data, d }); } }
+  for (const m of S.cx) { if (m.data <= c.dataSaldo || m.data > fim) continue; const d = (m.tipo === 'retirada' ? 'Retirada da empresa' : 'Aporte na empresa') + (m.desc ? ' · ' + esc(m.desc) : '');
+    if (m.tipo === 'retirada') out.push({ conta: m.contaPes, v: +m.valor || 0, data: m.data, d }); if (m.tipo === 'aporte') out.push({ conta: m.contaPes, v: -(+m.valor || 0), data: m.data, d }); }
+  return out;
+}
+const ctResolve = (t, id) => { const ks = ctList(t); return ks.some(k => k.id === id) ? id : ks[0].id; };
+function saldosCt(t, fim) { const o = {}; for (const k of ctList(t)) o[k.id] = +k.saldo || 0; for (const f of (t === 'e' ? fluxosEmp(fim) : fluxosPes(fim))) o[ctResolve(t, f.conta)] += f.v; return o; }
+const saldosEmp = fim => saldosCt('e', fim);
 function caixaAte(fim) { return Object.values(saldosEmp(fim)).reduce((a, b) => a + b, 0); }
 function jurosDoPagamento(p) {
   const L = S.emp.find(e => e.id === p.emp); if (!L) return +p.mora || 0; const r = R(L.id);
@@ -579,15 +592,7 @@ function sheetFech(mes) {
 /* ---------- pessoal ---------- */
 const pesCfg = () => Object.assign({ saldoInicial: 0, dataSaldo: TISO, salario: 0 }, S.pcfg || {});
 const CARTOES = ['Santander', 'Nubank'];
-function saldosPes(fim) {
-  const c = pesCfg(), ks = CT_P(), o = {}; for (const k of ks) o[k.id] = +k.saldo || 0;
-  const add = (id, v) => { o[id in o ? id : ks[0].id] += v; };
-  for (const l of S.pl) { if (l.data <= c.dataSaldo || l.data > fim) continue; const v = +l.valor || 0;
-    if (l.tipo === 'receita' || l.tipo === 'entrada' || l.tipo === 'resgate') add(l.conta, v); else if (l.tipo === 'aporte' || l.tipo === 'saida') add(l.conta, -v);
-    else if (l.tipo === 'cartao' && l.pago) add(l.conta, -v); else if (l.tipo === 'transf') { add(l.conta, -v); add(l.contaDest, v); } }
-  for (const m of S.cx) { if (m.data <= c.dataSaldo || m.data > fim) continue; if (m.tipo === 'retirada') add(m.contaPes, +m.valor || 0); if (m.tipo === 'aporte') add(m.contaPes, -(+m.valor || 0)); }
-  return o;
-}
+const saldosPes = fim => saldosCt('p', fim);
 function caixaPes(fim) { return Object.values(saldosPes(fim)).reduce((a, b) => a + b, 0); }
 const contasBloco = t => { const ks = ctList(t), sd = t === 'e' ? saldosEmp(TISO) : saldosPes(TISO);
   return `<div class="sec"><h3>${t === 'e' ? 'Onde está o caixa da empresa' : 'Onde está o caixa pessoal'}</h3><span><button class="lnk" data-ctedit="${t}">editar contas</button></span></div>
@@ -813,9 +818,9 @@ V.ajustes = () => {
    <label>Teto da mora (× parcela, 0 = sem)<input name="teto" type="number" step="0.1" value="${c.teto}"></label>
    <label>Tolerância (dias)<input name="tolerancia" type="number" value="${c.tolerancia}"></label>
    <label>Inadimplente após (dias)<input name="limInad" type="number" value="${c.limInad}"></label></div>
-   <div class="sec" id="contasEmp"><h3>Contas da empresa</h3><span>saldo de cada uma na data abaixo</span></div>
+   <div class="sec" id="contasEmp"><h3>Contas da empresa</h3><span>saldo de cada uma no fim do dia abaixo</span></div>
    ${ctEditor('e')}
-   <label>Data dos saldos iniciais<input name="dataSaldo" type="date" value="${c.dataSaldo}"></label>
+   <label>Data dos saldos (fim do dia)<input name="dataSaldo" type="date" value="${c.dataSaldo}"></label>
    <label>Feriados (um por linha, AAAA-MM-DD) — cobrança diária pula esses dias<textarea name="feriados" rows="6">${esc((c.feriados || []).join('\n'))}</textarea></label>
    <button class="btn pri" type="submit">Salvar ajustes</button>
   </form>
@@ -952,7 +957,16 @@ const ctRow = (k = {}) => `<div class="ctrow"><input type="hidden" name="ct_id" 
 const ctEditor = t => { const ks = ctList(t), sd = t === 'e' ? saldosEmp(TISO) : saldosPes(TISO);
   return `<div class="cted" data-ct="${t}"><div class="cthead"><span>Conta</span><span>Saldo inicial</span><span></span></div>${ks.map(k => ctRow(k)).join('')}</div>
   <button type="button" class="btn" data-addct="${t}" style="justify-self:start">+ Adicionar conta</button>
-  <p class="note">Hoje: ${ks.map(k => `${esc(k.nome)} ${R$(sd[k.id])}`).join(' · ')}. O total do caixa é a soma das contas.</p>`; };
+  <div class="ctnow">${ks.map(k => { const mv = r2(sd[k.id] - (+k.saldo || 0)); return `<div><b>${esc(k.nome)}</b> hoje ${R$(sd[k.id])}${mv ? ` = ${R$(k.saldo)} inicial ${mv > 0 ? '+' : '−'} ${R$(Math.abs(mv))} de lançamentos · <button type="button" class="lnk" data-ctmov="${t}:${esc(k.id)}">ver quais</button>` : ''}</div>`; }).join('')}</div>
+  <p class="note">Informe quanto havia em cada conta no <b>fim do dia</b> da data abaixo. Por cima desse valor o app soma só os lançamentos com data posterior. O total do caixa é a soma das contas.</p>`; };
+function sheetCtMov(t, id) {
+  const k = ctList(t).find(x => x.id === id) || ctList(t)[0], c = t === 'e' ? cfg() : pesCfg();
+  const L = (t === 'e' ? fluxosEmp(TISO) : fluxosPes(TISO)).filter(f => ctResolve(t, f.conta) === k.id).sort((a, b) => a.data.localeCompare(b.data));
+  const tot = L.reduce((s, f) => s + f.v, 0);
+  open(`<h2>${esc(k.nome)}</h2><p class="note">Saldo inicial ${R$(k.saldo)} no fim de ${dBR(c.dataSaldo)}, mais estes lançamentos:</p>
+  <div class="list">${L.length ? L.map(f => `<div class="row"><div><div class="nm">${f.d}</div><div class="meta">${dBR(f.data)}</div></div><div class="val" style="color:${f.v >= 0 ? 'var(--ok)' : 'var(--ink)'}">${f.v >= 0 ? '+' : '−'}${R$(Math.abs(f.v))}</div></div>`).join('') : '<div class="empty">Nenhum lançamento depois dessa data.</div>'}</div>
+  <p class="note">Total ${R$(k.saldo)} ${tot >= 0 ? '+' : '−'} ${R$(Math.abs(tot))} = <b>${R$((+k.saldo || 0) + tot)}</b>. Se um desses já estava incluído no saldo que você digitou, mude a data do saldo para o dia dele ou exclua o lançamento repetido.</p>`);
+}
 function lerContas(f) {
   const ids = [...f.querySelectorAll('[name=ct_id]')], ns = [...f.querySelectorAll('[name=ct_nome]')], ss = [...f.querySelectorAll('[name=ct_saldo]')], usados = new Set();
   return ns.map((n, i) => { const nome = n.value.trim(); if (!nome) return null;
@@ -1141,7 +1155,7 @@ document.addEventListener('change', async e => {
   if (e.target.id !== 'impFile') return; const f = e.target.files?.[0]; e.target.value = ''; if (!f) return;
   try { abrirRestauracao(lerBackup(await f.text())); } catch (er) { toast(er.message === 'vazio' ? 'O arquivo não tem dados do app.' : 'Arquivo inválido. Escolha um backup .json do Tavares & Co.'); }
 });
-const APPV = '2026.11.23-5';
+const APPV = '2026.11.23-6';
 function dadosInfo() {
   const m = LDB.get('meta/app') || {}; const ub = m.ultimoBackup ? new Date(m.ultimoBackup) : null;
   return `<div class="cards"><div class="card"><span>Registros no aparelho</span><b>${LDB.size()}</b><em>${S.cli.length} clientes · ${S.emp.length} empréstimos · ${S.pag.length} pagamentos</em></div>
@@ -1207,7 +1221,7 @@ const num = v => v === '' || v == null ? 0 : +v;
 
 document.addEventListener('click', async e => {
   if (e.target.closest('a.wa')) return;
-  const t = e.target.closest('[data-close],[data-htab],[data-filt],[data-new-emp],[data-new-cli],[data-new-mov],[data-pay],[data-emp],[data-cli],[data-mov],[data-edit-emp],[data-del-pag],[data-del-emp],[data-del-cli],[data-del-mov],[data-fill],#bkp,#bkpc,#calcMora,[data-new-fec],[data-fec],[data-del-fec],[data-outros],[data-pnew],[data-pl],[data-del-pl],[data-inv],[data-new-inv],[data-del-inv],[data-pcfg],[data-pmes],[data-paporte],[data-rncli],[data-rnsel],[data-rnclear],#rnCalc,#rnGo,[data-rnundo],[data-rntaxa],[data-hcat],[data-hist],[data-hdoc],[data-hcli],[data-hclear],#hcsv,#hcsvc,[data-pmesgo],[data-transf],[data-ctedit],[data-addct],[data-rmct],[data-restore-ok],[data-zero]');
+  const t = e.target.closest('[data-close],[data-htab],[data-filt],[data-new-emp],[data-new-cli],[data-new-mov],[data-pay],[data-emp],[data-cli],[data-mov],[data-edit-emp],[data-del-pag],[data-del-emp],[data-del-cli],[data-del-mov],[data-fill],#bkp,#bkpc,#calcMora,[data-new-fec],[data-fec],[data-del-fec],[data-outros],[data-pnew],[data-pl],[data-del-pl],[data-inv],[data-new-inv],[data-del-inv],[data-pcfg],[data-pmes],[data-paporte],[data-rncli],[data-rnsel],[data-rnclear],#rnCalc,#rnGo,[data-rnundo],[data-rntaxa],[data-hcat],[data-hist],[data-hdoc],[data-hcli],[data-hclear],#hcsv,#hcsvc,[data-pmesgo],[data-transf],[data-ctedit],[data-addct],[data-rmct],[data-ctmov],[data-restore-ok],[data-zero]');
   if (e.target === $('#ov')) { close(); render.reopen = null; return; }
   if (!t) return; const d = t.dataset;
   if (d.close !== undefined) { close(); render.reopen = null; }
@@ -1232,6 +1246,7 @@ document.addEventListener('click', async e => {
   else if (t.id === 'rnGo') { await rnConfirm(t); }
   else if (d.rnundo) { if (t.dataset.sure) await rnUndo(d.rnundo); else { t.dataset.sure = 1; t.textContent = 'Toque de novo para desfazer'; } }
   else if (d.pnew) { render.reopen = null; sheetPL(d.pnew, null); }
+  else if (d.ctmov) { const [tt, ...rest] = d.ctmov.split(':'); render.reopen = null; sheetCtMov(tt, rest.join(':')); }
   else if (d.transf) { render.reopen = null; sheetTransf(d.transf); }
   else if (d.ctedit) { if (d.ctedit === 'p') { render.reopen = null; sheetPesCfg(); } else { location.hash = 'ajustes'; setTimeout(() => $('#contasEmp')?.scrollIntoView({ behavior: 'smooth' }), 120); } }
   else if (d.addct) { const box = document.querySelector(`.cted[data-ct="${d.addct}"]`); box.insertAdjacentHTML('beforeend', ctRow()); box.lastElementChild.querySelector('[name=ct_nome]').focus(); }
