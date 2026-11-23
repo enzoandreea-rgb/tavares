@@ -44,6 +44,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .brand .sp{flex:1}
 .gear{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:10px;color:#C9A968}.gear svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7}.gear:hover{background:#13213A}.gear.on{background:#13213A;box-shadow:inset 0 -2px 0 #C9A968}
 .hday{font-size:12px;font-weight:700;color:var(--mut);margin:18px 2px 6px}.row.hrow{grid-template-columns:44px minmax(0,1fr) auto;align-items:start}.hrow .hr{font-size:12px;color:var(--mut);font-variant-numeric:tabular-nums;padding-top:2px;align-self:start}.hc{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px;margin-right:6px;vertical-align:1px;background:var(--sf2);color:var(--mut)}.hc-receb{background:light-dark(#E3F2E8,#12301F);color:var(--ok)}.hc-emp{background:light-dark(#FBF0D9,#3A2C0C);color:var(--warn)}.hc-reneg{background:light-dark(#E1EBF6,#14263D);color:light-dark(#1F4E79,#8DB8E8)}.hc-caixa{background:light-dark(#FCE6DA,#3B1D10);color:var(--late)}.hc-pessoal{background:light-dark(#ECE8F7,#231D3D);color:var(--park)}.hc-capital{background:light-dark(#F3ECDC,#2E2716);color:light-dark(#7A5E1E,#D9BE80)}.htools{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin:12px 0}.htools select,.htools input{min-height:44px}.lnk{background:none;border:0;padding:0;font:inherit;color:var(--gold);text-decoration:underline;cursor:pointer;min-height:0}@media(max-width:480px){.row.hrow{grid-template-columns:40px minmax(0,1fr)}.row.hrow .val{grid-column:2;text-align:left}}.hdiff td{vertical-align:top}.hdiff .de{color:var(--mut);text-decoration:line-through}.hdet{white-space:pre-line}
+.mrow{grid-template-columns:minmax(0,1fr) auto;align-items:start}.mrow.cur{background:var(--sf2)}.mrow .val{padding-top:2px}.mbar{display:flex;height:8px;border-radius:5px;background:light-dark(#E9F4EE,#12301F);overflow:hidden;margin:8px 0 6px;max-width:520px}.mbar i{display:block;height:100%}.mbar .c,.d.c{background:var(--late)}.mbar .a,.d.a{background:var(--gold)}.mbar .o,.d.o{background:var(--mut)}.d.r{background:var(--ok)}.mleg{display:flex;flex-wrap:wrap;gap:2px 12px;font-size:12.5px;color:var(--mut)}.mleg span{white-space:nowrap}.d{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:0}
 .bars .b{height:10px;border-radius:6px;background:var(--sf2);overflow:hidden;margin-top:6px}.bars .b i{display:block;height:100%;background:var(--gold);border-radius:6px}
 .mnav{display:flex;align-items:center;gap:6px;flex:none}.mnav b{min-width:92px;text-align:center;font-family:'Playfair Display',serif;font-size:18px}
 .sync{font-size:12px;color:#AEB5C4;display:flex;align-items:center;gap:6px}
@@ -106,7 +107,7 @@ table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:ta
 .search{flex:1 1 220px;max-width:340px}
 .sched td.pg{color:var(--ok)}.sched td.at{color:var(--late);font-weight:600}
 .check{display:flex;gap:8px;align-items:center;font-weight:600;color:var(--ink)}.check input{width:22px;min-height:22px}
-@media(max-width:600px){table{font-size:13px}.stack thead{display:none}.stack tr{display:grid;padding-block:10px}.stack td{display:flow-root;border:0;padding:3px 0;padding-inline-start:8em;text-align:start}.stack td::before{content:attr(data-l);float:inline-start;width:7.5em;margin-inline-start:-8em;color:var(--mut)}.stack td:empty{display:none}}
+@media(max-width:600px){table{font-size:13px}.stack thead{display:none}table.stack tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 12px;padding:12px 2px;border-bottom:1px solid var(--line)}table.stack td{display:block;border:0;padding:0;text-align:start;font-size:14px;font-variant-numeric:tabular-nums}table.stack td::before{content:attr(data-l);display:block;font-size:11px;font-weight:500;color:var(--mut);margin-bottom:1px}table.stack td:first-child{grid-column:1/-1;font-family:'Playfair Display',serif;font-size:17px;font-weight:600}table.stack td:first-child::before{display:none}table.stack td:empty{display:none}}
 </style>
 </head>
 <body>
@@ -193,6 +194,8 @@ const LDB = (() => {
   };
 })();
 
+/* rótulos das tabelas empilhadas no celular */
+new MutationObserver(() => { for (const c of document.querySelectorAll('.stack td:not([data-l])')) { let i = 0, q = c; while ((q = q.previousElementSibling)) i += q.colSpan; c.dataset.l = c.closest('table').rows[0].cells[i]?.textContent || ''; } }).observe(document.documentElement, { childList: true, subtree: true });
 /* ENGINE START */
 const DAY = 864e5;
 const P = s => { const [y, m, d] = String(s).slice(0, 10).split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)); };
@@ -623,8 +626,15 @@ V.pessoal = () => {
   <div class="sec"><h3>Lançamentos de ${mesLab(mes)}</h3><span>${mL.length + retL.length}</span></div>
   <div class="list">${mL.map(lrow).join('')}${retL.map(x => `<div class="row" style="cursor:default"><div><div class="nm">Retirada da Tavares &amp; Co.${x.desc ? ' · ' + esc(x.desc) : ''}</div><div class="meta">${dBR(x.data)} · lançada na aba Caixa</div></div><div class="val" style="color:var(--ok)">+${R$(x.valor)}</div></div>`).join('')}${mL.length + retL.length ? '' : '<div class="empty">Nada lançado neste mês.</div>'}</div>
   <div class="sec"><h3>Últimos 6 meses</h3></div>
-  <div class="scroll"><table class="stack"><thead><tr><th>Mês</th><th class="n">Receitas</th><th class="n">Santander</th><th class="n">Nubank</th><th class="n">Aportes</th><th class="n">Sobra</th></tr></thead>
-  <tbody>${hist.map(h => `<tr${h.mm === mes ? ' style="font-weight:700"' : ''}><td>${mesLab(h.mm)}</td><td class="n">${R0(h.rec + h.ent)}</td><td class="n">${R0(h.cart.Santander)}</td><td class="n">${R0(h.cart.Nubank)}</td><td class="n">${R0(h.apo)}</td><td class="n" style="color:${h.sobra < 0 ? 'var(--bad)' : 'inherit'}">${R0(h.sobra)}</td></tr>`).join('')}</tbody></table></div>`;
+  <div class="list mres">${hist.slice().reverse().map(h => {
+    const rec = h.rec + h.ent, cart = h.cart.Santander + h.cart.Nubank, sai = Math.max(0, r2(rec - cart - h.apo - h.sobra)), vazio = !rec && !cart && !h.apo && !sai;
+    const tot = Math.max(rec, cart + h.apo + sai, 1), w = v => (100 * v / tot).toFixed(1) + '%';
+    return `<div class="row mrow${h.mm === mes ? ' cur' : ''}" data-pmesgo="${h.mm}"><div>
+     <div class="nm">${mesLab(h.mm)}${h.mm === mes ? ' <span class="tag t-Renegociado">em tela</span>' : ''}</div>
+     ${vazio ? '<div class="meta">sem lançamentos</div>' : `<div class="mbar" aria-hidden="true"><i class="c" style="width:${w(cart)}"></i><i class="a" style="width:${w(h.apo)}"></i><i class="o" style="width:${w(sai)}"></i></div>
+     <div class="mleg"><span><b class="d r"></b>Receitas ${R0(rec)}</span><span><b class="d c"></b>Cartões ${R0(cart)}</span><span><b class="d a"></b>Aportes ${R0(h.apo)}</span>${sai ? `<span><b class="d o"></b>Outras ${R0(sai)}</span>` : ''}</div>`}</div>
+     <div class="val">${vazio ? '<span class="meta">—</span>' : `<span style="color:${h.sobra < 0 ? 'var(--bad)' : 'var(--ok)'}">${h.sobra < 0 ? '−' : ''}${R0(Math.abs(h.sobra))}</span><div class="meta">sobra</div>`}</div></div>`; }).join('')}</div>
+  <p class="note">A barra mostra quanto das receitas do mês foi para cartões, aportes e outras saídas; o que sobra fica em branco. Toque num mês para abri-lo.</p>`;
 };
 function sheetPL(tipo, id, invId) {
   const l = id ? S.pl.find(x => x.id === id) : { tipo, data: TISO, inv: invId || '', mesRef: (S.pesMes || TISO.slice(0, 7)), cartao: 'Santander', pago: true };
@@ -1132,7 +1142,7 @@ const num = v => v === '' || v == null ? 0 : +v;
 
 document.addEventListener('click', async e => {
   if (e.target.closest('a.wa')) return;
-  const t = e.target.closest('[data-close],[data-htab],[data-filt],[data-new-emp],[data-new-cli],[data-new-mov],[data-pay],[data-emp],[data-cli],[data-mov],[data-edit-emp],[data-del-pag],[data-del-emp],[data-del-cli],[data-del-mov],[data-fill],#bkp,#bkpc,#calcMora,[data-new-fec],[data-fec],[data-del-fec],[data-outros],[data-pnew],[data-pl],[data-del-pl],[data-inv],[data-new-inv],[data-del-inv],[data-pcfg],[data-pmes],[data-paporte],[data-rncli],[data-rnsel],[data-rnclear],#rnCalc,#rnGo,[data-rnundo],[data-rntaxa],[data-hcat],[data-hist],[data-hdoc],[data-hcli],[data-hclear],#hcsv,#hcsvc,[data-restore-ok],[data-zero]');
+  const t = e.target.closest('[data-close],[data-htab],[data-filt],[data-new-emp],[data-new-cli],[data-new-mov],[data-pay],[data-emp],[data-cli],[data-mov],[data-edit-emp],[data-del-pag],[data-del-emp],[data-del-cli],[data-del-mov],[data-fill],#bkp,#bkpc,#calcMora,[data-new-fec],[data-fec],[data-del-fec],[data-outros],[data-pnew],[data-pl],[data-del-pl],[data-inv],[data-new-inv],[data-del-inv],[data-pcfg],[data-pmes],[data-paporte],[data-rncli],[data-rnsel],[data-rnclear],#rnCalc,#rnGo,[data-rnundo],[data-rntaxa],[data-hcat],[data-hist],[data-hdoc],[data-hcli],[data-hclear],#hcsv,#hcsvc,[data-pmesgo],[data-restore-ok],[data-zero]');
   if (e.target === $('#ov')) { close(); render.reopen = null; return; }
   if (!t) return; const d = t.dataset;
   if (d.close !== undefined) { close(); render.reopen = null; }
@@ -1164,6 +1174,7 @@ document.addEventListener('click', async e => {
   else if (d.inv) { render.reopen = null; sheetInv(d.inv); }
   else if (d.delInv) { if (S.pl.some(l => l.inv === d.delInv)) return toast('Há aportes ligados a este investimento. Exclua-os antes.'); if (t.dataset.sure) { if (await W(() => col('pes_inv').doc(d.delInv).delete(), 'Investimento excluído')) close(); } else { t.dataset.sure = 1; t.textContent = 'Toque de novo para excluir'; } }
   else if (d.pcfg !== undefined) { render.reopen = null; sheetPesCfg(); }
+  else if (d.pmesgo) { S.pesMes = d.pmesgo; render(); scrollTo({ top: 0, behavior: 'smooth' }); }
   else if (d.pmes) { const [y, m] = (S.pesMes || TISO.slice(0, 7)).split('-').map(Number); const n = new Date(Date.UTC(y, m - 1 + (+d.pmes), 1)); S.pesMes = ISO(n).slice(0, 7); render(); }
   else if (d.newFec !== undefined) { render.reopen = null; sheetFech(null); }
   else if (d.fec) { render.reopen = null; sheetFech(d.fec); }
