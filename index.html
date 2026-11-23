@@ -45,6 +45,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .gear{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:10px;color:#C9A968}.gear svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7}.gear:hover{background:#13213A}.gear.on{background:#13213A;box-shadow:inset 0 -2px 0 #C9A968}
 .hday{font-size:12px;font-weight:700;color:var(--mut);margin:18px 2px 6px}.row.hrow{grid-template-columns:44px minmax(0,1fr) auto;align-items:start}.hrow .hr{font-size:12px;color:var(--mut);font-variant-numeric:tabular-nums;padding-top:2px;align-self:start}.hc{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px;margin-right:6px;vertical-align:1px;background:var(--sf2);color:var(--mut)}.hc-receb{background:light-dark(#E3F2E8,#12301F);color:var(--ok)}.hc-emp{background:light-dark(#FBF0D9,#3A2C0C);color:var(--warn)}.hc-reneg{background:light-dark(#E1EBF6,#14263D);color:light-dark(#1F4E79,#8DB8E8)}.hc-caixa{background:light-dark(#FCE6DA,#3B1D10);color:var(--late)}.hc-pessoal{background:light-dark(#ECE8F7,#231D3D);color:var(--park)}.hc-capital{background:light-dark(#F3ECDC,#2E2716);color:light-dark(#7A5E1E,#D9BE80)}.htools{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin:12px 0}.htools select,.htools input{min-height:44px}.lnk{background:none;border:0;padding:0;font:inherit;color:var(--gold);text-decoration:underline;cursor:pointer;min-height:0}@media(max-width:480px){.row.hrow{grid-template-columns:40px minmax(0,1fr)}.row.hrow .val{grid-column:2;text-align:left}}.hdiff td{vertical-align:top}.hdiff .de{color:var(--mut);text-decoration:line-through}.hdet{white-space:pre-line}
 .mrow{grid-template-columns:minmax(0,1fr) auto;align-items:start}.mrow.cur{background:var(--sf2)}.mrow .val{padding-top:2px}.mbar{display:flex;height:8px;border-radius:5px;background:light-dark(#E9F4EE,#12301F);overflow:hidden;margin:8px 0 6px;max-width:520px}.mbar i{display:block;height:100%}.mbar .c,.d.c{background:var(--late)}.mbar .a,.d.a{background:var(--gold)}.mbar .o,.d.o{background:var(--mut)}.d.r{background:var(--ok)}.mleg{display:flex;flex-wrap:wrap;gap:2px 12px;font-size:12.5px;color:var(--mut)}.mleg span{white-space:nowrap}.d{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:0}
+.contas{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:6px}.conta{background:var(--sf);border:1px solid var(--line);border-radius:12px;padding:12px 14px}.conta span{display:block;font-size:12px;color:var(--mut);margin-bottom:2px}.conta b{font-size:18px;font-variant-numeric:tabular-nums}.conta-tr{min-height:58px;justify-content:center}.cted{display:grid;gap:8px}.cthead,.ctrow{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 48px;gap:8px;align-items:center}.cthead span{font-size:12px;color:var(--mut)}.ctrow .del{height:48px;min-height:48px;padding:0;justify-content:center;font-size:20px}
 .bars .b{height:10px;border-radius:6px;background:var(--sf2);overflow:hidden;margin-top:6px}.bars .b i{display:block;height:100%;background:var(--gold);border-radius:6px}
 .mnav{display:flex;align-items:center;gap:6px;flex:none}.mnav b{min-width:92px;text-align:center;font-family:'Playfair Display',serif;font-size:18px}
 .sync{font-size:12px;color:#AEB5C4;display:flex;align-items:center;gap:6px}
@@ -334,13 +335,24 @@ function score(cid) {
   const c = cfg(); const s = parado || max > c.limInad ? 'D' : max > 15 ? 'C' : max > 0 ? 'B' : 'A';
   return { s, max, saldo, atraso, n };
 }
-function caixaAte(fim) {
-  const c = cfg(), ini = c.dataSaldo; let s = +c.saldoInicial || 0;
-  for (const p of S.pag) if (p.data >= ini && p.data <= fim) s += (+p.valor || 0) + (+p.amort || 0) + (+p.mora || 0);
-  for (const L of S.emp) if (!L.importado && !L.reneg && L.data >= ini && L.data <= fim) s -= +L.valor || 0;
-  for (const m of S.cx) if (m.data >= ini && m.data <= fim) s += (m.tipo === 'aporte' || m.tipo === 'ajuste+' ? 1 : -1) * (+m.valor || 0);
-  return s;
+/* ---------- contas (onde o dinheiro está) ---------- */
+const CT_E = () => { const c = cfg(); return Array.isArray(c.contas) && c.contas.length ? c.contas : [{ id: 'picpay', nome: 'PicPay', saldo: +c.saldoInicial || 0 }, { id: 'especie', nome: 'Espécie (empresa)', saldo: 0 }]; };
+const CT_P = () => { const c = pesCfg(); return Array.isArray(c.contas) && c.contas.length ? c.contas : [{ id: 'banco', nome: 'Conta bancária', saldo: +c.saldoInicial || 0 }, { id: 'especie', nome: 'Espécie', saldo: 0 }]; };
+const ctList = t => t === 'e' ? CT_E() : CT_P();
+const ctNome = (t, id) => { const ks = ctList(t); return (ks.find(k => k.id === id) || ks[0]).nome; };
+const ctOpts = (t, sel) => ctList(t).map(k => `<option value="${esc(k.id)}"${k.id === sel ? ' selected' : ''}>${esc(k.nome)}</option>`).join('');
+const ctEspecie = t => ctList(t).find(k => /esp[eé]cie|dinheiro/i.test(k.nome))?.id;
+const ctPadraoE = forma => (forma === 'Dinheiro' && ctEspecie('e')) || CT_E()[0].id;
+function saldosEmp(fim) {
+  const c = cfg(), ini = c.dataSaldo, ks = CT_E(), o = {}; for (const k of ks) o[k.id] = +k.saldo || 0;
+  const add = (id, v) => { o[id in o ? id : ks[0].id] += v; };
+  for (const p of S.pag) if (p.data >= ini && p.data <= fim) add(p.conta, (+p.valor || 0) + (+p.amort || 0) + (+p.mora || 0));
+  for (const L of S.emp) if (!L.importado && !L.reneg && L.data >= ini && L.data <= fim) add(L.conta, -(+L.valor || 0));
+  for (const m of S.cx) if (m.data >= ini && m.data <= fim) { const v = +m.valor || 0;
+    if (m.tipo === 'transf') { add(m.conta, -v); add(m.contaDest, v); } else add(m.conta, (m.tipo === 'aporte' || m.tipo === 'ajuste+' ? 1 : -1) * v); }
+  return o;
 }
+function caixaAte(fim) { return Object.values(saldosEmp(fim)).reduce((a, b) => a + b, 0); }
 function jurosDoPagamento(p) {
   const L = S.emp.find(e => e.id === p.emp); if (!L) return +p.mora || 0; const r = R(L.id);
   const base = L.modalidade === 'rotativo' ? (+p.valor || 0) : ((+p.valor || 0) + (+p.amort || 0)) * (r.total > 0 ? r.jurosTotal / r.total : 0);
@@ -454,7 +466,7 @@ V.caixa = () => {
   const ano = S.pag.filter(p => p.data.slice(0, 4) === TISO.slice(0, 4)).reduce((s, p) => s + jurosDoPagamento(p), 0) - S.cx.filter(x => x.tipo === 'despesa' && x.data.slice(0, 4) === TISO.slice(0, 4)).reduce((s, x) => s + (+x.valor || 0), 0);
   const caixa = caixaAte(TISO), capital = caixa + princ;
   const mov = [...S.cx].sort((a, b) => b.data.localeCompare(a.data)).slice(0, 30);
-  const TIP = { aporte: 'Aporte do sócio', retirada: 'Retirada do sócio', despesa: 'Despesa', 'ajuste+': 'Ajuste (+)', 'ajuste-': 'Ajuste (−)' };
+  const TIP = HTIPC;
   return `<div class="bar"><h2>Caixa e resultado</h2><button class="btn pri" data-new-mov>+ Movimento</button></div>
   <div class="cards">
    <div class="card"><span>Caixa atual</span><b>${R0(caixa)}</b><em>desde ${dBR(c.dataSaldo)}</em></div>
@@ -464,13 +476,14 @@ V.caixa = () => {
    <div class="card"><span>Lucro no mês</span><b>${R0(cur.lucro)}</b><em>juros + mora − despesas</em></div>
    <div class="card"><span>Lucro no ano</span><b>${R0(ano)}</b><em>${TISO.slice(0, 4)}</em></div>
   </div>
+  ${contasBloco('e')}
   <div class="sec"><h3>Recebido x emprestado por mês</h3><span>tracejado = previsto da carteira atual</span></div>
   <div class="fig"><svg id="chart" aria-label="Gráfico mensal"></svg></div>
   <div class="legend"><span><i style="background:var(--gold)"></i>Recebido</span><span><i style="border:1px dashed var(--gold)"></i>Previsto</span><span><i style="background:var(--bar2)"></i>Emprestado</span></div>
   <div class="scroll"><table class="stack"><thead><tr><th>Mês</th><th class="n">Recebido</th><th class="n">Previsto</th><th class="n">Emprestado</th><th class="n">Juros + mora</th><th class="n">Despesas</th><th class="n">Retiradas</th><th class="n">Caixa fim</th></tr></thead>
   <tbody>${M.map(m => `<tr${m.k === 0 ? ' style="font-weight:700"' : ''}><td>${m.lab}</td><td class="n">${R0(m.rec)}</td><td class="n">${m.k >= 0 ? R0(m.prev) : '—'}</td><td class="n">${R0(m.conc)}</td><td class="n">${R0(m.juros)}</td><td class="n">${R0(m.desp)}</td><td class="n">${R0(m.ret)}</td><td class="n">${m.caixa == null ? '—' : R0(m.caixa)}</td></tr>`).join('')}</tbody></table></div>
-  <div class="sec"><h3>Movimentos de caixa</h3><span>aportes, retiradas e despesas</span></div>
-  <div class="list">${mov.length ? mov.map(x => `<div class="row" data-mov="${x.id}"><div><div class="nm">${TIP[x.tipo] || x.tipo}</div><div class="meta">${dBR(x.data)}${x.desc ? ' · ' + esc(x.desc) : ''}</div></div><div class="val" style="color:${x.tipo === 'aporte' || x.tipo === 'ajuste+' ? 'var(--ok)' : 'var(--ink)'}">${x.tipo === 'aporte' || x.tipo === 'ajuste+' ? '+' : '−'}${R$(x.valor)}</div></div>`).join('') : '<div class="empty">Nenhum movimento. Empréstimos e recebimentos entram sozinhos no caixa.</div>'}</div>`;
+  <div class="sec"><h3>Movimentos de caixa</h3><span>aportes, retiradas, transferências e despesas</span></div>
+  <div class="list">${mov.length ? mov.map(x => `<div class="row" data-mov="${x.id}"><div><div class="nm">${TIP[x.tipo] || x.tipo}</div><div class="meta">${dBR(x.data)} · ${movRota(x)}${x.desc ? ' · ' + esc(x.desc) : ''}</div></div><div class="val" style="color:${x.tipo === 'transf' ? 'var(--mut)' : x.tipo === 'aporte' || x.tipo === 'ajuste+' ? 'var(--ok)' : 'var(--ink)'}">${x.tipo === 'transf' ? '' : x.tipo === 'aporte' || x.tipo === 'ajuste+' ? '+' : '−'}${R$(x.valor)}</div></div>`).join('') : '<div class="empty">Nenhum movimento. Empréstimos e recebimentos entram sozinhos no caixa.</div>'}</div>`;
 };
 
 function statsMes(a, b) {
@@ -566,13 +579,20 @@ function sheetFech(mes) {
 /* ---------- pessoal ---------- */
 const pesCfg = () => Object.assign({ saldoInicial: 0, dataSaldo: TISO, salario: 0 }, S.pcfg || {});
 const CARTOES = ['Santander', 'Nubank'];
-function caixaPes(fim) {
-  const c = pesCfg(); let s = +c.saldoInicial || 0;
+function saldosPes(fim) {
+  const c = pesCfg(), ks = CT_P(), o = {}; for (const k of ks) o[k.id] = +k.saldo || 0;
+  const add = (id, v) => { o[id in o ? id : ks[0].id] += v; };
   for (const l of S.pl) { if (l.data <= c.dataSaldo || l.data > fim) continue; const v = +l.valor || 0;
-    if (l.tipo === 'receita' || l.tipo === 'entrada' || l.tipo === 'resgate') s += v; else if (l.tipo === 'aporte' || l.tipo === 'saida') s -= v; else if (l.tipo === 'cartao' && l.pago) s -= v; }
-  for (const m of S.cx) { if (m.data <= c.dataSaldo || m.data > fim) continue; if (m.tipo === 'retirada') s += +m.valor || 0; if (m.tipo === 'aporte') s -= +m.valor || 0; }
-  return s;
+    if (l.tipo === 'receita' || l.tipo === 'entrada' || l.tipo === 'resgate') add(l.conta, v); else if (l.tipo === 'aporte' || l.tipo === 'saida') add(l.conta, -v);
+    else if (l.tipo === 'cartao' && l.pago) add(l.conta, -v); else if (l.tipo === 'transf') { add(l.conta, -v); add(l.contaDest, v); } }
+  for (const m of S.cx) { if (m.data <= c.dataSaldo || m.data > fim) continue; if (m.tipo === 'retirada') add(m.contaPes, +m.valor || 0); if (m.tipo === 'aporte') add(m.contaPes, -(+m.valor || 0)); }
+  return o;
 }
+function caixaPes(fim) { return Object.values(saldosPes(fim)).reduce((a, b) => a + b, 0); }
+const contasBloco = t => { const ks = ctList(t), sd = t === 'e' ? saldosEmp(TISO) : saldosPes(TISO);
+  return `<div class="sec"><h3>${t === 'e' ? 'Onde está o caixa da empresa' : 'Onde está o caixa pessoal'}</h3><span><button class="lnk" data-ctedit="${t}">editar contas</button></span></div>
+  <div class="contas">${ks.map(k => `<div class="conta"><span>${esc(k.nome)}</span><b style="${sd[k.id] < 0 ? 'color:var(--bad)' : ''}">${R$(sd[k.id])}</b></div>`).join('')}
+  <button class="btn conta-tr" data-transf="${t}">⇄ Transferir entre contas</button></div>`; };
 function invSaldo(I) { let s = +I.saldoBase || 0; for (const l of S.pl) if (l.inv === I.id && l.data > I.dataBase && l.data <= TISO) s += (l.tipo === 'aporte' ? 1 : l.tipo === 'resgate' ? -1 : 0) * (+l.valor || 0); return s; }
 function receberPes() { const c = pesCfg(); return S.pl.filter(l => (l.tipo === 'receita' || l.tipo === 'entrada') && l.data > TISO && l.data > c.dataSaldo).reduce((s, l) => s + (+l.valor || 0), 0); }
 function gastosAbertos() { const c = pesCfg(); return S.pl.filter(l => l.data > c.dataSaldo || l.tipo === 'cartao').filter(l => (l.tipo === 'cartao' && (!l.pago || l.data > TISO)) || (l.tipo === 'saida' && l.data > TISO)).reduce((s, l) => s + (+l.valor || 0), 0); }
@@ -586,7 +606,8 @@ function pesStats(mes) {
   const cartTot = cart.Santander + cart.Nubank;
   return { a, b, rec, ret, ent, apo, sai, cart, cartTot, sobra: rec + ent - cartTot - apo - sai };
 }
-const TIPOL = { receita: 'Receita', cartao: 'Fatura do cartão', aporte: 'Aporte', resgate: 'Resgate', saida: 'Outra saída', entrada: 'Outra entrada' };
+const TIPOL = { receita: 'Receita', cartao: 'Fatura do cartão', aporte: 'Aporte', resgate: 'Resgate', saida: 'Outra saída', entrada: 'Outra entrada', transf: 'Transferência entre contas' };
+const movRota = x => x.tipo === 'transf' ? `${esc(ctNome('e', x.conta))} → ${esc(ctNome('e', x.contaDest))}` : x.tipo === 'retirada' ? `${esc(ctNome('e', x.conta))} → ${esc(ctNome('p', x.contaPes))} (pessoal)` : x.tipo === 'aporte' ? `${esc(ctNome('p', x.contaPes))} (pessoal) → ${esc(ctNome('e', x.conta))}` : esc(ctNome('e', x.conta));
 V.pessoal = () => {
   const mes = S.pesMes || TISO.slice(0, 7), st = pesStats(mes), P_ = patrimonioPes(), c = pesCfg();
   const metaTot = S.inv.reduce((s, I) => s + (+I.meta || 0), 0);
@@ -599,11 +620,12 @@ V.pessoal = () => {
   const mL = S.pl.filter(l => (l.tipo === 'cartao' ? l.mesRef === mes : l.data >= st.a && l.data <= st.b)).sort((a, b) => b.data.localeCompare(a.data));
   const retL = S.cx.filter(x => x.tipo === 'retirada' && x.data >= st.a && x.data <= st.b);
   const invNome = id => S.inv.find(I => I.id === id)?.nome || 'investimento';
-  const lrow = l => { const neg = l.tipo === 'cartao' || l.tipo === 'aporte' || l.tipo === 'saida';
-    const meta = l.tipo === 'cartao' ? `${esc(l.cartao)} · ref. ${mesLab(l.mesRef)} · ${l.pago ? 'paga em ' + dBR(l.data) : 'em aberto · vence ' + dBR(l.data)}` : (l.tipo === 'aporte' || l.tipo === 'resgate' ? esc(invNome(l.inv)) + ' · ' : '') + dBR(l.data);
+  const lrow = l => { if (l.tipo === 'transf') return `<div class="row" data-pl="${l.id}"><div><div class="nm">Transferência${l.desc ? ' · ' + esc(l.desc) : ''}</div><div class="meta">${esc(ctNome('p', l.conta))} → ${esc(ctNome('p', l.contaDest))} · ${dBR(l.data)}</div></div><div class="val" style="color:var(--mut)">${R$(l.valor)}</div></div>`;
+    const neg = l.tipo === 'cartao' || l.tipo === 'aporte' || l.tipo === 'saida';
+    const meta = l.tipo === 'cartao' ? `${esc(l.cartao)} · ref. ${mesLab(l.mesRef)} · ${l.pago ? 'paga em ' + dBR(l.data) : 'em aberto · vence ' + dBR(l.data)}` : (l.tipo === 'aporte' || l.tipo === 'resgate' ? esc(invNome(l.inv)) + ' · ' : '') + dBR(l.data) + (CT_P().length > 1 ? ' · ' + esc(ctNome('p', l.conta)) : '');
     return `<div class="row" data-pl="${l.id}"><div><div class="nm">${TIPOL[l.tipo]}${l.desc ? ' · ' + esc(l.desc) : ''}${l.tipo === 'cartao' && !l.pago ? ' <span class="tag t-Vencehoje">Em aberto</span>' : ''}</div><div class="meta">${meta}</div></div><div class="val" style="color:${neg ? 'var(--ink)' : 'var(--ok)'}">${neg ? '−' : '+'}${R$(l.valor)}</div></div>`; };
   const hist = []; { const [y, m] = mes.split('-').map(Number); for (let k = -5; k <= 0; k++) { const d = new Date(Date.UTC(y, m - 1 + k, 1)); const mm = ISO(d).slice(0, 7); hist.push({ mm, ...pesStats(mm) }); } }
-  return `<div class="bar"><h2>Gestão pessoal</h2><button class="btn" data-pcfg>Saldo inicial e salário</button></div>
+  return `<div class="bar"><h2>Gestão pessoal</h2><button class="btn" data-pcfg>Contas e salário</button></div>
   <div class="cards">
    <div class="card"><span>Caixa pessoal</span><b>${R0(P_.caixa)}</b><em>desde ${dBR(c.dataSaldo)}</em></div>
    <div class="card"><span>Investimentos</span><b>${R0(P_.inv)}</b><em>${S.inv.length} aplicaç${S.inv.length === 1 ? 'ão' : 'ões'}</em></div>
@@ -612,6 +634,7 @@ V.pessoal = () => {
    <div class="card"><span>Patrimônio pessoal</span><b>${R0(P_.total)}</b><em>caixa + investimentos + a receber − gastos em aberto</em></div>
    <div class="card"><span>Meta de aporte mensal</span><b>${R0(metaTot)}</b><em>${R0(S.inv.reduce((s, I) => s + S.pl.filter(l => l.inv === I.id && l.tipo === 'aporte' && l.data >= st.a && l.data <= st.b).reduce((a, l) => a + (+l.valor || 0), 0), 0))} aportado em ${mesLab(mes)}</em></div>
   </div>
+  ${contasBloco('p')}
   <div class="sec" style="margin-top:22px"><div class="mnav"><button class="chip" data-pmes="-1" aria-label="Mês anterior">‹</button><b>${mesLab(mes)}</b><button class="chip" data-pmes="1" aria-label="Próximo mês">›</button></div>
    <div class="chips"><button class="chip" data-pnew="receita">+ Receita</button><button class="chip" data-pnew="cartao">+ Fatura cartão</button><button class="chip" data-pnew="aporte">+ Aporte</button><button class="chip" data-pnew="saida">+ Outro</button></div></div>
   <div class="cards">
@@ -649,6 +672,8 @@ function sheetPL(tipo, id, invId) {
    ${tipo === 'aporte' || tipo === 'saida' ? `<label id="invWrap" style="${tipo === 'saida' ? 'display:none' : ''}">Investimento<select name="inv"><option value="">Selecione…</option>${S.inv.map(I => `<option value="${I.id}"${I.id === l.inv ? ' selected' : ''}>${esc(I.nome)}</option>`).join('')}</select></label>` : tipo === 'resgate' ? `<label>Investimento<select name="inv">${S.inv.map(I => `<option value="${I.id}"${I.id === l.inv ? ' selected' : ''}>${esc(I.nome)}</option>`).join('')}</select></label>` : ''}
    <div class="grid2"><label>Valor<input name="valor" type="number" step="0.01" min="0" required value="${l.valor ?? ''}"></label><label>${tipo === 'cartao' ? 'Pagamento / vencimento' : 'Data'}<input name="data" type="date" required value="${l.data}"></label></div>
    ${tipo === 'cartao' ? `<label class="check"><input type="checkbox" name="pago"${l.pago ? ' checked' : ''}> Fatura paga (sai do caixa pessoal na data acima)</label>` : ''}
+   ${tipo === 'transf' ? `<div class="grid2"><label>De<select name="conta">${ctOpts('p', l.conta)}</select></label><label>Para<select name="contaDest">${ctOpts('p', l.contaDest)}</select></label></div>`
+     : `<label>${tipo === 'cartao' ? 'Paga com' : tipo === 'receita' || tipo === 'entrada' || tipo === 'resgate' ? 'Entra em' : 'Sai de'}<select name="conta">${ctOpts('p', l.conta || CT_P()[0].id)}</select></label>`}
    <label>Descrição<input name="desc" value="${esc(l.desc || '')}" placeholder="${tipo === 'receita' ? 'Salário, 13º, extra…' : ''}"></label>
    <button class="btn gold" type="submit">Salvar</button>${id ? ` <button class="btn del" type="button" data-del-pl="${id}">Excluir</button>` : ''}
   </form>`);
@@ -670,8 +695,8 @@ function sheetInv(id) {
 }
 function sheetPesCfg() {
   const c = pesCfg();
-  open(`<h2>Caixa pessoal</h2><p class="note">O saldo do caixa pessoal parte do valor abaixo, na data informada, e soma receitas, entradas, resgates e retiradas da empresa; subtrai faturas pagas, aportes, saídas e aportes que você fizer na empresa.</p>
-  <form id="fpcfg" class="stack"><div class="grid2"><label>Saldo inicial<input name="saldoInicial" type="number" step="0.01" value="${c.saldoInicial}"></label><label>Data do saldo (fim do dia)<input name="dataSaldo" type="date" value="${c.dataSaldo}"></label></div>
+  open(`<h2>Contas pessoais</h2><p class="note">Cada conta parte do saldo informado, no fim do dia abaixo. Receitas, resgates e retiradas da empresa entram na conta escolhida em cada lançamento; faturas pagas, aportes, saídas e aportes na empresa saem dela.</p>
+  <form id="fpcfg" class="stack">${ctEditor('p')}<label>Data dos saldos (fim do dia)<input name="dataSaldo" type="date" value="${c.dataSaldo}"></label>
   <label>Salário líquido (preenche o lançamento de receita)<input name="salario" type="number" step="0.01" value="${c.salario || ''}"></label>
   <button class="btn pri" type="submit">Salvar</button></form>`);
 }
@@ -788,8 +813,9 @@ V.ajustes = () => {
    <label>Teto da mora (× parcela, 0 = sem)<input name="teto" type="number" step="0.1" value="${c.teto}"></label>
    <label>Tolerância (dias)<input name="tolerancia" type="number" value="${c.tolerancia}"></label>
    <label>Inadimplente após (dias)<input name="limInad" type="number" value="${c.limInad}"></label></div>
-   <div class="grid2"><label>Saldo inicial do caixa<input name="saldoInicial" type="number" step="0.01" value="${c.saldoInicial}"></label>
-   <label>Data do saldo inicial<input name="dataSaldo" type="date" value="${c.dataSaldo}"></label></div>
+   <div class="sec" id="contasEmp"><h3>Contas da empresa</h3><span>saldo de cada uma na data abaixo</span></div>
+   ${ctEditor('e')}
+   <label>Data dos saldos iniciais<input name="dataSaldo" type="date" value="${c.dataSaldo}"></label>
    <label>Feriados (um por linha, AAAA-MM-DD) — cobrança diária pula esses dias<textarea name="feriados" rows="6">${esc((c.feriados || []).join('\n'))}</textarea></label>
    <button class="btn pri" type="submit">Salvar ajustes</button>
   </form>
@@ -840,6 +866,7 @@ function sheetEmpForm(id) {
    <label id="novoCliWrap" style="display:none">Nome do novo cliente<input name="novoCli" placeholder="Nome completo"></label>
    <div class="grid2"><label>Valor emprestado<input name="valor" type="number" step="0.01" min="0" required value="${L?.valor ?? ''}"></label>
    <label>Data do empréstimo<input name="data" type="date" required value="${data}"></label></div>
+   ${L?.importado ? '' : `<label>Sai de<select name="conta">${ctOpts('e', L?.conta || CT_E()[0].id)}</select></label>`}
    <div class="grid2"><label>Modalidade<select name="modalidade"><option value="parcelado">Parcelado (juros fixo)</option><option value="rotativo"${L?.modalidade === 'rotativo' ? ' selected' : ''}>Rotativo (só juros)</option></select></label>
    <label>Frequência<select name="freq">${Object.entries(FREQ).map(([k, v]) => `<option value="${k}"${k === freq ? ' selected' : ''}>${v.l}</option>`).join('')}</select></label></div>
    <div class="grid3"><label>Nº de parcelas<input name="n" type="number" min="1" value="${L?.n ?? 1}"></label>
@@ -862,6 +889,7 @@ function simUpdate() {
   $('#simbox').innerHTML = rot ? `<small>Juros por período</small><div><b>${R$(r.parcela)}</b></div><div class="g"><div><span>Principal</span>${R$(valor)}</div><div><span>Taxa</span>${pct(taxa)} a.m.</div><div><span>1º venc.</span>${dBR(L.primeiroVenc)}</div></div>`
     : `<small>Parcela</small><div><b>${R$(r.parcela)}</b> <small>× ${r.n}</small></div><div class="g"><div><span>Total a receber</span>${R$(r.total)}</div><div><span>Juros</span>${R$(r.jurosTotal)}</div><div><span>Último venc.</span>${dBR(r.sched[r.sched.length - 1])}</div></div><small style="display:block;margin-top:8px">${sch}</small>`;
 }
+function payContaSync() { const f = $('#fpag'); if (!f || !f.elements.conta) return; f.elements.forma.addEventListener('change', () => { f.elements.conta.value = ctPadraoE(f.elements.forma.value); }); }
 function sheetPay(id) {
   const L = S.emp.find(e => e.id === id), r = R(id), cli = cliById(L.cliente);
   const due = r2(r.atraso + r.hojeValor) || r.parcela;
@@ -869,6 +897,7 @@ function sheetPay(id) {
   <form id="fpag" class="stack" data-eid="${id}">
    <div class="grid2"><label>Data<input name="data" type="date" required value="${TISO}"></label>
    <label>Forma<select name="forma">${['Pix', 'Dinheiro', 'Transferência', 'Cartão', 'Outro'].map(x => `<option>${x}</option>`).join('')}</select></label></div>
+   <label>Recebido em<select name="conta">${ctOpts('e', ctPadraoE('Pix'))}</select></label>
    <label>${r.rot ? 'Juros pagos' : 'Valor das parcelas'}<input name="valor" type="number" step="0.01" min="0" value="${due}"></label>
    <div class="chips">${[['Devido', due], ['1 parcela', r.parcela], ['Quitar tudo', r.rot ? r.atraso : r.saldo]].filter(x => x[1] > 0).map(([l, v]) => `<button type="button" class="chip" data-fill="${v}">${l}: ${R$(v)}</button>`).join('')}</div>
    <div class="grid2"><label>Dias de atraso a cobrar<input name="dias" type="number" min="0" step="1" inputmode="numeric" placeholder="${r.dias ? 'atraso real: ' + r.dias + (r.dias > 1 ? ' dias' : ' dia') : '0'}"></label>
@@ -902,24 +931,54 @@ function sheetCli(id) {
 }
 function sheetMov(id) {
   const x = id ? S.cx.find(m => m.id === id) : {};
-  open(`<h2>${id ? 'Movimento' : 'Novo movimento'}</h2><p class="note">Empréstimos concedidos e recebimentos entram no caixa sozinhos. Aqui só aportes, retiradas, despesas e ajustes.</p>
+  open(`<h2>${id ? 'Movimento' : 'Novo movimento'}</h2><p class="note">Empréstimos concedidos e recebimentos entram no caixa sozinhos. Aqui ficam aportes e retiradas (com a conta pessoal do outro lado), despesas, transferências e ajustes.</p>
   <form id="fmov" class="stack" data-id="${id || ''}">
-   <div class="grid2"><label>Tipo<select name="tipo">${[['aporte', 'Aporte do sócio'], ['retirada', 'Retirada do sócio'], ['despesa', 'Despesa'], ['ajuste+', 'Ajuste (+)'], ['ajuste-', 'Ajuste (−)']].map(([v, l]) => `<option value="${v}"${x.tipo === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
+   <div class="grid2"><label>Tipo<select name="tipo">${[['aporte', 'Aporte do sócio'], ['retirada', 'Retirada do sócio'], ['despesa', 'Despesa'], ['transf', 'Transferência entre contas'], ['ajuste+', 'Ajuste (+)'], ['ajuste-', 'Ajuste (−)']].map(([v, l]) => `<option value="${v}"${x.tipo === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
    <label>Data<input name="data" type="date" required value="${x.data || TISO}"></label></div>
    <label>Valor<input name="valor" type="number" step="0.01" min="0" required value="${x.valor ?? ''}"></label>
+   <div class="grid2"><label id="lbConta">${x.tipo === 'transf' ? 'De (empresa)' : 'Conta da empresa'}<select name="conta">${ctOpts('e', x.conta || CT_E()[0].id)}</select></label>
+   <label id="wrapPes" style="${x.tipo === 'aporte' || x.tipo === 'retirada' || !id ? '' : 'display:none'}">Conta pessoal<select name="contaPes">${ctOpts('p', x.contaPes || CT_P()[0].id)}</select></label>
+   <label id="wrapDest" style="${x.tipo === 'transf' ? '' : 'display:none'}">Para (empresa)<select name="contaDest">${ctOpts('e', x.contaDest || (CT_E()[1] || CT_E()[0]).id)}</select></label></div>
    <label>Descrição<input name="desc" value="${esc(x.desc || '')}"></label>
    <button class="btn pri" type="submit">Salvar</button>${id ? ` <button class="btn del" type="button" data-del-mov="${id}">Excluir</button>` : ''}
   </form>`);
+  const f = $('#fmov'), sync = () => { const t = f.elements.tipo.value; $('#wrapPes').style.display = t === 'aporte' || t === 'retirada' ? '' : 'none'; $('#wrapDest').style.display = t === 'transf' ? '' : 'none'; $('#lbConta').firstChild.textContent = t === 'transf' ? 'De (empresa)' : 'Conta da empresa'; };
+  f.elements.tipo.addEventListener('change', sync); sync();
+}
+
+
+/* ---------- editor de contas e transferência ---------- */
+const ctRow = (k = {}) => `<div class="ctrow"><input type="hidden" name="ct_id" value="${esc(k.id || '')}"><input name="ct_nome" aria-label="Nome da conta" placeholder="PicPay, Espécie…" value="${esc(k.nome || '')}"><input name="ct_saldo" aria-label="Saldo inicial" type="number" step="0.01" inputmode="decimal" placeholder="0,00" value="${k.saldo ?? ''}"><button type="button" class="btn del" data-rmct aria-label="Remover conta">×</button></div>`;
+const ctEditor = t => { const ks = ctList(t), sd = t === 'e' ? saldosEmp(TISO) : saldosPes(TISO);
+  return `<div class="cted" data-ct="${t}"><div class="cthead"><span>Conta</span><span>Saldo inicial</span><span></span></div>${ks.map(k => ctRow(k)).join('')}</div>
+  <button type="button" class="btn" data-addct="${t}" style="justify-self:start">+ Adicionar conta</button>
+  <p class="note">Hoje: ${ks.map(k => `${esc(k.nome)} ${R$(sd[k.id])}`).join(' · ')}. O total do caixa é a soma das contas.</p>`; };
+function lerContas(f) {
+  const ids = [...f.querySelectorAll('[name=ct_id]')], ns = [...f.querySelectorAll('[name=ct_nome]')], ss = [...f.querySelectorAll('[name=ct_saldo]')], usados = new Set();
+  return ns.map((n, i) => { const nome = n.value.trim(); if (!nome) return null;
+    let id = ids[i].value || nome.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'conta';
+    while (usados.has(id)) id += '-2'; usados.add(id); return { id, nome, saldo: num(ss[i].value) }; }).filter(Boolean);
+}
+function sheetTransf(t) {
+  const opt = (sel) => `<optgroup label="Empresa">${CT_E().map(k => `<option value="e:${esc(k.id)}"${'e:' + k.id === sel ? ' selected' : ''}>${esc(k.nome)}</option>`).join('')}</optgroup><optgroup label="Pessoal">${CT_P().map(k => `<option value="p:${esc(k.id)}"${'p:' + k.id === sel ? ' selected' : ''}>${esc(k.nome)}</option>`).join('')}</optgroup>`;
+  const de = t + ':' + ctList(t)[0].id, para = t + ':' + (ctList(t)[1] || ctList(t === 'e' ? 'p' : 'e')[0]).id;
+  open(`<h2>Transferir entre contas</h2><p class="note">Entre contas da empresa ou entre contas pessoais, o total não muda. Da empresa para o pessoal vira retirada do sócio; do pessoal para a empresa vira aporte do sócio.</p>
+  <form id="ftrf" class="stack"><div class="grid2"><label>De<select name="de">${opt(de)}</select></label><label>Para<select name="para">${opt(para)}</select></label></div>
+  <div class="grid2"><label>Valor<input name="valor" type="number" step="0.01" min="0" inputmode="decimal" required></label><label>Data<input name="data" type="date" required value="${TISO}"></label></div>
+  <label>Descrição<input name="desc" placeholder="Saque, depósito, troco…"></label>
+  <p class="note" id="trfInfo"></p><button class="btn gold" type="submit">Transferir</button></form>`);
+  const f = $('#ftrf'), info = () => { const [a] = f.elements.de.value.split(':'), [b] = f.elements.para.value.split(':'); $('#trfInfo').textContent = a === b ? 'Movimento interno: o total do caixa ' + (a === 'e' ? 'da empresa' : 'pessoal') + ' não muda.' : a === 'e' ? 'Será registrado como retirada do sócio (sai da empresa, entra no pessoal).' : 'Será registrado como aporte do sócio (sai do pessoal, entra na empresa).'; };
+  f.addEventListener('change', info); info();
 }
 
 /* ---------- histórico: descrição e tela ---------- */
 const HCAT = { tudo: 'Tudo', receb: 'Recebimentos', emp: 'Empréstimos', reneg: 'Renegociações', caixa: 'Caixa', cli: 'Clientes', pessoal: 'Pessoal', capital: 'Capital', ajuste: 'Ajustes' };
 const HSIT = { ativo: 'Ativo', renegociado: 'Renegociado', parado: 'Parado', perdido: 'Perdido', substituido: 'Encerrado (renegociado)' };
-const HTIPC = { aporte: 'Aporte do sócio', retirada: 'Retirada do sócio', despesa: 'Despesa', 'ajuste+': 'Ajuste (+)', 'ajuste-': 'Ajuste (−)' };
+const HTIPC = { aporte: 'Aporte do sócio', retirada: 'Retirada do sócio', despesa: 'Despesa', transf: 'Transferência entre contas', 'ajuste+': 'Ajuste (+)', 'ajuste-': 'Ajuste (−)' };
 const HLBL = { cliente: 'Cliente', valor: 'Valor', parcela: 'Parcela', n: 'Nº de parcelas', freq: 'Frequência', modalidade: 'Modalidade', data: 'Data', primeiroVenc: '1º vencimento', taxa: 'Taxa', situacao: 'Situação', obs: 'Observação',
   nome: 'Nome', tel: 'Telefone', cpf: 'CPF', end: 'Endereço', indic: 'Indicação', vip: 'VIP', sit: 'Situação', mora: 'Mora', amort: 'Amortização', forma: 'Forma', emp: 'Contrato', tipo: 'Tipo', desc: 'Descrição',
   cartao: 'Cartão', pago: 'Pago', mesRef: 'Mês de referência', inv: 'Investimento', inst: 'Instituição', meta: 'Meta mensal', saldoBase: 'Saldo base', dataBase: 'Data base', capitalTotal: 'Capital total',
-  saldoInicial: 'Saldo inicial', dataSaldo: 'Data do saldo', salario: 'Salário', taxaVip: 'Taxa VIP', teto: 'Teto da mora', tolerancia: 'Tolerância', limInad: 'Dias até inadimplente', mes: 'Mês', outros: 'Outros ativos' };
+  saldoInicial: 'Saldo inicial', dataSaldo: 'Data do saldo', salario: 'Salário', taxaVip: 'Taxa VIP', teto: 'Teto da mora', tolerancia: 'Tolerância', limInad: 'Dias até inadimplente', mes: 'Mês', outros: 'Outros ativos', conta: 'Conta', contaDest: 'Para a conta', contaPes: 'Conta pessoal', contas: 'Contas' };
 const HIGN = new Set(['criado', 'atualizado', 'importado', 'sitAnterior', 'renegPara', 'renegData', 'saldoTransferido', 'reneg', 'feriados', 'origem', 'detalhe']);
 const HMONEY = new Set(['valor', 'parcela', 'amort', 'meta', 'saldoBase', 'capitalTotal', 'saldoInicial', 'salario', 'teto', 'outros']);
 function hFmt(c, k, v) {
@@ -929,6 +988,9 @@ function hFmt(c, k, v) {
   if (k === 'taxa' || k === 'taxaVip') return pct(v);
   if (HMONEY.has(k)) return R$(v);
   if (k === 'cliente') return cliNome(v);
+  if (k === 'contas' && Array.isArray(v)) return v.map(x => `${x.nome}: ${R$(x.saldo)}`).join(' · ');
+  if (k === 'conta' || k === 'contaDest') return ctNome(c === 'pes_lanc' ? 'p' : 'e', v);
+  if (k === 'contaPes') return ctNome('p', v);
   if (k === 'freq') return FREQ[v]?.l || v;
   if (k === 'situacao') return HSIT[v] || v;
   if (k === 'modalidade') return v === 'rotativo' ? 'Rotativo (só juros)' : 'Parcelado (juros fixo)';
@@ -966,9 +1028,10 @@ function hDesc(e) {
   if (c === 'clientes') return { cat: 'cli', cliente: x.nome || '', cliId: e.doc, ref: e.doc, valor: 0, sinal: 0,
     titulo: op === 'add' ? 'Cliente cadastrado' : op === 'delete' ? 'Cliente excluído' : 'Cadastro alterado: ' + hMud(e).map(m => HLBL[m.k] || m.k).join(', ') };
   if (c === 'caixa') { const ent = x.tipo === 'aporte' || x.tipo === 'ajuste+';
-    return { cat: 'caixa', cliente: '', cliId: null, ref: e.doc, valor: +x.valor || 0, sinal: (ent ? 1 : -1) * (op === 'delete' ? -1 : op === 'update' ? 0 : 1), titulo: `${HTIPC[x.tipo] || 'Movimento de caixa'} de ${R$(x.valor)}${x.desc ? ' · ' + x.desc : ''}${suf}` }; }
+    const rota = x.tipo === 'transf' ? ` · ${ctNome('e', x.conta)} → ${ctNome('e', x.contaDest)}` : x.tipo === 'retirada' ? ` · ${ctNome('e', x.conta)} → ${ctNome('p', x.contaPes)}` : x.tipo === 'aporte' ? ` · ${ctNome('p', x.contaPes)} → ${ctNome('e', x.conta)}` : '';
+    return { cat: 'caixa', cliente: '', cliId: null, ref: e.doc, valor: +x.valor || 0, sinal: x.tipo === 'transf' ? 0 : (ent ? 1 : -1) * (op === 'delete' ? -1 : op === 'update' ? 0 : 1), titulo: `${HTIPC[x.tipo] || 'Movimento de caixa'} de ${R$(x.valor)}${rota}${x.desc ? ' · ' + x.desc : ''}${suf}` }; }
   if (c === 'pes_lanc') {
-    const lab = x.tipo === 'cartao' ? 'Fatura ' + (x.cartao || 'do cartão') : (TIPOL[x.tipo] || 'Lançamento');
+    const lab = (x.tipo === 'cartao' ? 'Fatura ' + (x.cartao || 'do cartão') : (TIPOL[x.tipo] || 'Lançamento')) + (x.tipo === 'transf' ? ` (${ctNome('p', x.conta)} → ${ctNome('p', x.contaDest)})` : '');
     const inv = x.inv ? S.inv.find(i => i.id === x.inv)?.nome : '';
     const t = op === 'update' && a && d && !a.pago && d.pago ? `${lab} de ${R$(x.valor)} marcada como paga` : `${lab}${inv ? ' · ' + inv : ''} de ${R$(x.valor)}${x.desc ? ' · ' + x.desc : ''}${suf}`;
     return { cat: 'pessoal', cliente: '', cliId: null, ref: e.doc, valor: +x.valor || 0, sinal: 0, titulo: t };
@@ -1078,7 +1141,7 @@ document.addEventListener('change', async e => {
   if (e.target.id !== 'impFile') return; const f = e.target.files?.[0]; e.target.value = ''; if (!f) return;
   try { abrirRestauracao(lerBackup(await f.text())); } catch (er) { toast(er.message === 'vazio' ? 'O arquivo não tem dados do app.' : 'Arquivo inválido. Escolha um backup .json do Tavares & Co.'); }
 });
-const APPV = '2026.11.23-4';
+const APPV = '2026.11.23-5';
 function dadosInfo() {
   const m = LDB.get('meta/app') || {}; const ub = m.ultimoBackup ? new Date(m.ultimoBackup) : null;
   return `<div class="cards"><div class="card"><span>Registros no aparelho</span><b>${LDB.size()}</b><em>${S.cli.length} clientes · ${S.emp.length} empréstimos · ${S.pag.length} pagamentos</em></div>
@@ -1144,7 +1207,7 @@ const num = v => v === '' || v == null ? 0 : +v;
 
 document.addEventListener('click', async e => {
   if (e.target.closest('a.wa')) return;
-  const t = e.target.closest('[data-close],[data-htab],[data-filt],[data-new-emp],[data-new-cli],[data-new-mov],[data-pay],[data-emp],[data-cli],[data-mov],[data-edit-emp],[data-del-pag],[data-del-emp],[data-del-cli],[data-del-mov],[data-fill],#bkp,#bkpc,#calcMora,[data-new-fec],[data-fec],[data-del-fec],[data-outros],[data-pnew],[data-pl],[data-del-pl],[data-inv],[data-new-inv],[data-del-inv],[data-pcfg],[data-pmes],[data-paporte],[data-rncli],[data-rnsel],[data-rnclear],#rnCalc,#rnGo,[data-rnundo],[data-rntaxa],[data-hcat],[data-hist],[data-hdoc],[data-hcli],[data-hclear],#hcsv,#hcsvc,[data-pmesgo],[data-restore-ok],[data-zero]');
+  const t = e.target.closest('[data-close],[data-htab],[data-filt],[data-new-emp],[data-new-cli],[data-new-mov],[data-pay],[data-emp],[data-cli],[data-mov],[data-edit-emp],[data-del-pag],[data-del-emp],[data-del-cli],[data-del-mov],[data-fill],#bkp,#bkpc,#calcMora,[data-new-fec],[data-fec],[data-del-fec],[data-outros],[data-pnew],[data-pl],[data-del-pl],[data-inv],[data-new-inv],[data-del-inv],[data-pcfg],[data-pmes],[data-paporte],[data-rncli],[data-rnsel],[data-rnclear],#rnCalc,#rnGo,[data-rnundo],[data-rntaxa],[data-hcat],[data-hist],[data-hdoc],[data-hcli],[data-hclear],#hcsv,#hcsvc,[data-pmesgo],[data-transf],[data-ctedit],[data-addct],[data-rmct],[data-restore-ok],[data-zero]');
   if (e.target === $('#ov')) { close(); render.reopen = null; return; }
   if (!t) return; const d = t.dataset;
   if (d.close !== undefined) { close(); render.reopen = null; }
@@ -1169,6 +1232,10 @@ document.addEventListener('click', async e => {
   else if (t.id === 'rnGo') { await rnConfirm(t); }
   else if (d.rnundo) { if (t.dataset.sure) await rnUndo(d.rnundo); else { t.dataset.sure = 1; t.textContent = 'Toque de novo para desfazer'; } }
   else if (d.pnew) { render.reopen = null; sheetPL(d.pnew, null); }
+  else if (d.transf) { render.reopen = null; sheetTransf(d.transf); }
+  else if (d.ctedit) { if (d.ctedit === 'p') { render.reopen = null; sheetPesCfg(); } else { location.hash = 'ajustes'; setTimeout(() => $('#contasEmp')?.scrollIntoView({ behavior: 'smooth' }), 120); } }
+  else if (d.addct) { const box = document.querySelector(`.cted[data-ct="${d.addct}"]`); box.insertAdjacentHTML('beforeend', ctRow()); box.lastElementChild.querySelector('[name=ct_nome]').focus(); }
+  else if (d.rmct !== undefined) { const box = t.closest('.cted'); if (box.querySelectorAll('.ctrow').length > 1) t.closest('.ctrow').remove(); else toast('Precisa de pelo menos uma conta.'); }
   else if (d.paporte) { render.reopen = null; sheetPL('aporte', null, d.paporte); }
   else if (d.pl) { render.reopen = null; sheetPL(null, d.pl); }
   else if (d.delPl) { if (t.dataset.sure) { if (await W(() => col('pes_lanc').doc(d.delPl).delete(), 'Lançamento excluído')) close(); } else { t.dataset.sure = 1; t.textContent = 'Toque de novo para excluir'; } }
@@ -1188,7 +1255,7 @@ document.addEventListener('click', async e => {
     f.elements.mora.value = m ? m.toFixed(2) : '';
     $('#moraInfo').textContent = dias ? `${R$(base)} × ${pct(c.mora)} × ${dias} dia${dias > 1 ? 's' : ''} = ${R$(m)}${capped ? ' (limitado pelo teto)' : ''}. Pode ajustar o valor antes de confirmar.` : 'Zero dias: recebimento sem mora.';
   }
-  else if (d.pay) { e.stopPropagation(); render.reopen = null; sheetPay(d.pay); }
+  else if (d.pay) { setTimeout(payContaSync, 0); e.stopPropagation(); render.reopen = null; sheetPay(d.pay); }
   else if (d.newEmp !== undefined) { render.reopen = null; sheetEmpForm(null); if (d.newEmp) { const s = $('#femp').elements.cliente; s.value = d.newEmp; onCliChange(); } }
   else if (d.newCli !== undefined) { render.reopen = null; sheetCli(null); }
   else if (d.newMov !== undefined) { render.reopen = null; sheetMov(null); }
@@ -1233,11 +1300,12 @@ document.addEventListener('submit', async e => {
     if (!cid) return toast('Selecione o cliente.');
     const body = { cliente: cid, valor: num(g('valor')), data: g('data'), modalidade: g('modalidade'), freq: g('freq'), n: g('freq') === 'unico' || g('modalidade') === 'rotativo' ? 1 : Math.max(1, num(g('n'))),
       primeiroVenc: g('primeiroVenc'), taxa: num(g('taxa')) / 100, parcela: num(g('parcela')), obs: g('obs').trim() };
+    if (f.elements.conta) body.conta = g('conta');
     if (!(body.valor > 0)) return toast('Informe o valor.');
     const id = f.dataset.id;
     if (await W(() => id ? col('emprestimos').doc(id).update(body) : col('emprestimos').add({ ...body, situacao: 'ativo', criado: new Date().toISOString() }), id ? 'Empréstimo atualizado' : 'Empréstimo registrado')) { close(); render.reopen = null; }
   } else if (f.id === 'fpag') {
-    const body = { emp: f.dataset.eid, data: g('data'), valor: num(g('valor')), mora: num(g('mora')), amort: num(g('amort')), forma: g('forma'), obs: g('obs').trim(), criado: new Date().toISOString() };
+    const body = { emp: f.dataset.eid, data: g('data'), valor: num(g('valor')), mora: num(g('mora')), amort: num(g('amort')), forma: g('forma'), conta: g('conta') || CT_E()[0].id, obs: g('obs').trim(), criado: new Date().toISOString() };
     if (body.valor + body.mora + body.amort <= 0) return toast('Informe um valor.');
     if (await W(() => col('pagamentos').add(body), 'Recebimento registrado')) { close(); render.reopen = null; }
   } else if (f.id === 'fcli') {
@@ -1246,14 +1314,18 @@ document.addEventListener('submit', async e => {
     const body = { nome, tel: g('tel').trim(), cpf: g('cpf').trim(), end: g('end').trim(), ref: g('ref').trim(), indic: g('indic').trim(), ocup: g('ocup').trim(), renda: num(g('renda')), garantia: g('garantia').trim(), vip: f.elements.vip.checked, sit: g('sit'), obs: g('obs').trim() };
     if (await W(() => id ? col('clientes').doc(id).update(body) : col('clientes').add({ ...body, criado: TISO }), id ? 'Cliente atualizado' : 'Cliente cadastrado')) { close(); }
   } else if (f.id === 'fmov') {
-    const body = { tipo: g('tipo'), data: g('data'), valor: num(g('valor')), desc: g('desc').trim() }; const id = f.dataset.id;
+    const body = { tipo: g('tipo'), data: g('data'), valor: num(g('valor')), desc: g('desc').trim(), conta: g('conta') }; const id = f.dataset.id;
     if (!(body.valor > 0)) return toast('Informe o valor.');
+    if (body.tipo === 'aporte' || body.tipo === 'retirada') body.contaPes = g('contaPes');
+    if (body.tipo === 'transf') { body.contaDest = g('contaDest'); if (body.contaDest === body.conta) return toast('Escolha contas diferentes.'); }
     if (await W(() => id ? col('caixa').doc(id).update(body) : col('caixa').add(body), 'Movimento salvo')) close();
   } else if (f.id === 'fpl') {
     const tipo = g('tipo'), id = f.dataset.id, body = { tipo, data: g('data'), valor: num(g('valor')), desc: g('desc').trim() };
     if (!(body.valor > 0)) return toast('Informe o valor.');
     if (tipo === 'cartao') { body.cartao = g('cartao'); body.mesRef = g('mesRef'); body.pago = f.elements.pago.checked; }
     if (tipo === 'aporte' || tipo === 'resgate') { body.inv = g('inv'); if (!body.inv) return toast('Escolha o investimento.'); }
+    if (f.elements.conta) body.conta = g('conta');
+    if (tipo === 'transf') { body.contaDest = g('contaDest'); if (body.contaDest === body.conta) return toast('Escolha contas diferentes.'); }
     if (await W(() => id ? col('pes_lanc').doc(id).set(body) : col('pes_lanc').add({ ...body, criado: new Date().toISOString() }), 'Lançamento salvo')) close();
   } else if (f.id === 'finv') {
     const id = f.dataset.id, body = { nome: g('nome').trim(), inst: g('inst').trim(), meta: num(g('meta')) };
@@ -1263,8 +1335,17 @@ document.addEventListener('submit', async e => {
     else if (novoSaldo !== '') { body.saldoBase = num(novoSaldo); body.dataBase = TISO; }
     if (await W(() => id ? col('pes_inv').doc(id).update(body) : col('pes_inv').add(body), 'Investimento salvo')) close();
   } else if (f.id === 'fpcfg') {
-    const body = { saldoInicial: num(g('saldoInicial')), dataSaldo: g('dataSaldo') || TISO, salario: num(g('salario')) };
+    const contas = lerContas(f); if (!contas.length) return toast('Cadastre pelo menos uma conta.');
+    const body = { contas, saldoInicial: r2(contas.reduce((s, k) => s + k.saldo, 0)), dataSaldo: g('dataSaldo') || TISO, salario: num(g('salario')) };
     if (await W(() => dref('config', 'pessoal').set(body), 'Ajustes pessoais salvos')) close();
+  } else if (f.id === 'ftrf') {
+    const [a, ca] = g('de').split(':'), [b, cb] = g('para').split(':'), valor = num(g('valor')), data = g('data'), desc = g('desc').trim();
+    if (!(valor > 0)) return toast('Informe o valor.'); if (a === b && ca === cb) return toast('Escolha contas diferentes.');
+    const ok = await W(() => a === 'e' && b === 'e' ? col('caixa').add({ tipo: 'transf', conta: ca, contaDest: cb, valor, data, desc })
+      : a === 'p' && b === 'p' ? col('pes_lanc').add({ tipo: 'transf', conta: ca, contaDest: cb, valor, data, desc, criado: new Date().toISOString() })
+      : a === 'e' ? col('caixa').add({ tipo: 'retirada', conta: ca, contaPes: cb, valor, data, desc })
+      : col('caixa').add({ tipo: 'aporte', conta: cb, contaPes: ca, valor, data, desc }), 'Transferência registrada');
+    if (ok) close();
   } else if (f.id === 'ffec') {
     const mes = g('mes'); if (!/^\d{4}-\d{2}$/.test(mes)) return toast('Informe o mês.');
     const C = capitalAgora(num(g('outros'))), [y, m] = mes.split('-').map(Number), st = statsMes(ISO(new Date(Date.UTC(y, m - 1, 1))), ISO(new Date(Date.UTC(y, m, 0))));
@@ -1273,7 +1354,8 @@ document.addEventListener('submit', async e => {
     if (await W(() => col('fechamentos').doc(mes).set(body), 'Fechamento de ' + mesLab(mes) + ' salvo')) close();
   } else if (f.id === 'fcfg') {
     const fer = g('feriados').split(/\s+/).map(s => s.trim()).filter(s => /^\d{4}-\d{2}-\d{2}$/.test(s));
-    const body = { taxa: num(g('taxa')) / 100, taxaVip: num(g('taxaVip')) / 100, mora: num(g('mora')) / 100, teto: num(g('teto')), tolerancia: num(g('tolerancia')), limInad: num(g('limInad')) || 30, saldoInicial: num(g('saldoInicial')), dataSaldo: g('dataSaldo') || DEF.dataSaldo, feriados: fer };
+    const body = { taxa: num(g('taxa')) / 100, taxaVip: num(g('taxaVip')) / 100, mora: num(g('mora')) / 100, teto: num(g('teto')), tolerancia: num(g('tolerancia')), limInad: num(g('limInad')) || 30, dataSaldo: g('dataSaldo') || DEF.dataSaldo, feriados: fer };
+    body.contas = lerContas(f); if (!body.contas.length) return toast('Cadastre pelo menos uma conta da empresa.'); body.saldoInicial = r2(body.contas.reduce((s, k) => s + k.saldo, 0));
     await W(() => dref('config', 'geral').set(body), 'Ajustes salvos');
   }
 });
