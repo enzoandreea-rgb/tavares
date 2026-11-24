@@ -45,6 +45,25 @@ button,input,select,textarea{font:inherit;color:inherit}
 .gear{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:10px;color:#C9A968}.gear svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7}.gear:hover{background:#13213A}.gear.on{background:#13213A;box-shadow:inset 0 -2px 0 #C9A968}
 .hday{font-size:12px;font-weight:700;color:var(--mut);margin:18px 2px 6px}.row.hrow{grid-template-columns:44px minmax(0,1fr) auto;align-items:start}.hrow .hr{font-size:12px;color:var(--mut);font-variant-numeric:tabular-nums;padding-top:2px;align-self:start}.hc{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px;margin-right:6px;vertical-align:1px;background:var(--sf2);color:var(--mut)}.hc-receb{background:light-dark(#E3F2E8,#12301F);color:var(--ok)}.hc-emp{background:light-dark(#FBF0D9,#3A2C0C);color:var(--warn)}.hc-reneg{background:light-dark(#E1EBF6,#14263D);color:light-dark(#1F4E79,#8DB8E8)}.hc-caixa{background:light-dark(#FCE6DA,#3B1D10);color:var(--late)}.hc-pessoal{background:light-dark(#ECE8F7,#231D3D);color:var(--park)}.hc-capital{background:light-dark(#F3ECDC,#2E2716);color:light-dark(#7A5E1E,#D9BE80)}.htools{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin:12px 0}.htools select,.htools input{min-height:44px}.lnk{background:none;border:0;padding:0;font:inherit;color:var(--gold);text-decoration:underline;cursor:pointer;min-height:0}@media(max-width:480px){.row.hrow{grid-template-columns:40px minmax(0,1fr)}.row.hrow .val{grid-column:2;text-align:left}}.hdiff td{vertical-align:top}.hdiff .de{color:var(--mut);text-decoration:line-through}.hdet{white-space:pre-line}
 .mrow{grid-template-columns:minmax(0,1fr) auto;align-items:start}.mrow.cur{background:var(--sf2)}.mrow .val{padding-top:2px}.mbar{display:flex;height:8px;border-radius:5px;background:light-dark(#E9F4EE,#12301F);overflow:hidden;margin:8px 0 6px;max-width:520px}.mbar i{display:block;height:100%}.mbar .c,.d.c{background:var(--late)}.mbar .a,.d.a{background:var(--gold)}.mbar .o,.d.o{background:var(--mut)}.d.r{background:var(--ok)}.mleg{display:flex;flex-wrap:wrap;gap:2px 12px;font-size:12.5px;color:var(--mut)}.mleg span{white-space:nowrap}.d{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:0}
+body.pg-inicio .brand>img,body.pg-inicio .brand>div:nth-child(2){opacity:0;pointer-events:none}body.pg-inicio .top{padding-bottom:0}body.pg-inicio .brand{min-height:0}
+.hm-hero{position:relative;overflow:hidden;background:linear-gradient(155deg,#0A1428 0%,#12203A 55%,#1B2C4A 100%);color:#EEE9DB;border-radius:20px;padding:22px 20px 18px;margin:4px 0 18px;border:1px solid #22324F}
+.hm-mark{position:absolute;right:-40px;top:-30px;width:240px;height:200px;background-size:contain;background-repeat:no-repeat;opacity:.09;filter:saturate(.6);pointer-events:none}
+.hm-id{display:flex;gap:14px;align-items:center;position:relative}.hm-id img{width:64px;height:auto;border-radius:12px;flex:none}
+.hm-id h2{font-family:"Playfair Display",serif;font-size:30px;line-height:1.05;margin:2px 0 4px;color:var(--goldf)}.hm-id p{margin:0;font-size:13px;color:#AEB5C4}
+.hm-hi{font-size:12px;letter-spacing:.02em;color:#C9A968;font-weight:600}
+.hm-today{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr);gap:14px;margin-top:18px;padding-top:16px;border-top:1px solid rgba(201,169,104,.25);width:100%;position:relative}
+.hm-today span{display:block;font-size:12px;color:#AEB5C4}.hm-today b{display:block;font-family:"Playfair Display",serif;font-size:22px;color:#F3EEDF;font-variant-numeric:tabular-nums}.hm-today div:first-child b{font-size:28px;color:var(--goldf)}
+.hm-today em{display:block;font-style:normal;font-size:11.5px;color:#8F97A8;margin-top:2px}.hm-today b.bad{color:#F08C7A}.hm-today:focus-visible{outline:2px solid var(--gold);outline-offset:6px;border-radius:8px}
+.hm-acts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:8px}@media(min-width:760px){.hm-acts{grid-template-columns:repeat(8,minmax(0,1fr))}}
+.hm-act{display:flex;flex-direction:column;align-items:center;gap:7px;background:none;border:0;padding:6px 2px;min-height:0;cursor:pointer;color:var(--ink);font-size:12px;font-weight:600;text-align:center;line-height:1.2}
+.hm-act i{width:54px;height:54px;border-radius:16px;display:grid;place-items:center;background:var(--sf);border:1px solid var(--line);color:var(--gold);transition:transform .15s}.hm-act:active i{transform:scale(.93)}
+.hm-act svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.hm-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}@media(min-width:760px){.hm-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.hm-card{all:unset;box-sizing:border-box;cursor:pointer;background:var(--sf);border:1px solid var(--line);border-radius:14px;padding:13px 14px;display:block;min-width:0}
+.hm-card span{display:block;font-size:12px;color:var(--mut)}.hm-card b{display:block;font-size:19px;margin:3px 0 2px;font-variant-numeric:tabular-nums}.hm-card b small{font-size:12px;font-weight:500;color:var(--mut)}
+.hm-card em{display:block;font-style:normal;font-size:11.5px;color:var(--mut);overflow-wrap:anywhere}.hm-card em.ok{color:var(--ok)}.hm-card em.bad{color:var(--bad)}.hm-card:focus-visible{outline:2px solid var(--gold)}
+@media(max-width:759px){.hm-wide{grid-column:1/-1}}.hm-cap{grid-column:1/-1;background:linear-gradient(135deg,var(--sf),light-dark(#F6EFDD,#1A2338));border-color:light-dark(#E5D6AE,#3A3A2E)}.hm-cap b{font-family:"Playfair Display",serif;font-size:30px;color:var(--gold)}
+@media(max-width:400px){.hm-today{grid-template-columns:1fr 1fr}.hm-today div:first-child{grid-column:1/-1}.hm-act span{font-size:11px}}
 .contas{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:6px}.conta{background:var(--sf);border:1px solid var(--line);border-radius:12px;padding:12px 14px}.conta span{display:block;font-size:12px;color:var(--mut);margin-bottom:2px}.conta b{font-size:18px;font-variant-numeric:tabular-nums}.conta-tr{min-height:58px;justify-content:center}.ctnow{display:grid;gap:4px;font-size:14px;margin-top:4px}.ctnow b{font-weight:600}.cted{display:grid;gap:8px}.cthead,.ctrow{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 48px;gap:8px;align-items:center}.cthead span{font-size:12px;color:var(--mut)}.ctrow .del{height:48px;min-height:48px;padding:0;justify-content:center;font-size:20px}
 .bars .b{height:10px;border-radius:6px;background:var(--sf2);overflow:hidden;margin-top:6px}.bars .b i{display:block;height:100%;background:var(--gold);border-radius:6px}
 .mnav{display:flex;align-items:center;gap:6px;flex:none}.mnav b{min-width:92px;text-align:center;font-family:'Playfair Display',serif;font-size:18px}
@@ -120,12 +139,12 @@ table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:ta
   </div>
 </header>
 <nav class="tabs" id="tabs">
-  <a href="#hoje" data-r="hoje"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Hoje</a>
+  <a href="#inicio" data-r="inicio"><svg viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5.5h4V20"/></svg>Início</a>
+  <a href="#hoje" data-r="hoje"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Cobrança</a>
   <a href="#emprestimos" data-r="emprestimos"><svg viewBox="0 0 24 24"><path d="M4 7h16v12H4z"/><circle cx="12" cy="13" r="3"/><path d="M4 10c2 0 3-1 3-3M20 10c-2 0-3-1-3-3"/></svg><span class="lf">Empréstimos</span><span class="ls">Contratos</span></a>
   <a href="#clientes" data-r="clientes"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.5-4 3.3-6 6.5-6s6 2 6.5 6M16 4.5a3.5 3.5 0 0 1 0 7M18 14c2 .6 3.3 2.6 3.5 6"/></svg>Clientes</a>
   <a href="#caixa" data-r="caixa"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Caixa</a>
   <a href="#capital" data-r="capital"><svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 3 8-8"/><path d="M15 7h5v5"/></svg>Capital</a>
-  <a href="#renegociar" data-r="renegociar"><svg viewBox="0 0 24 24"><path d="M4 9a8 8 0 0 1 14-4l2 2M20 15a8 8 0 0 1-14 4l-2-2"/><path d="M20 3v4h-4M4 21v-4h4"/></svg><span class="lf">Renegociar</span><span class="ls">Reneg.</span></a>
   <a href="#pessoal" data-r="pessoal"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4.2 4-6.5 8-6.5s7.2 2.3 8 6.5"/></svg>Pessoal</a>
 </nav>
 <main><div class="banner" id="banner"></div><div class="lembrete" id="lembrete"></div><div id="view"></div></main>
@@ -1111,6 +1130,53 @@ function histCSV(L) {
   return '﻿' + linhas.join('\r\n');
 }
 
+/* ---------- página inicial ---------- */
+const ICO = {
+  receber: '<path d="M12 3v11"/><path d="M7.5 9.5 12 14l4.5-4.5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/>',
+  emprestimo: '<circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/>',
+  cliente: '<circle cx="10" cy="8" r="3.5"/><path d="M3.5 20c.6-3.8 3.3-6 6.5-6 1.6 0 3 .5 4.2 1.4"/><path d="M18 14v6M15 17h6"/>',
+  transf: '<path d="M4 8h14l-3.5-3.5"/><path d="M20 16H6l3.5 3.5"/>',
+  pessoal: '<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1.3"/>',
+  reneg: '<path d="M4 9a8 8 0 0 1 14-4l2 2"/><path d="M20 15a8 8 0 0 1-14 4l-2-2"/><path d="M20 3v4h-4M4 21v-4h4"/>',
+  fechar: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="m9 15 2 2 4-4"/>',
+  backup: '<path d="M7 18a4.5 4.5 0 0 1-.7-8.9A6 6 0 0 1 18 8.5a4 4 0 0 1-.5 9.5"/><path d="M12 11v9M9 17l3 3 3-3"/>'
+};
+const ico = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICO[k]}</svg>`;
+V.inicio = () => {
+  const f = fila(), hojeV = f.hoje.reduce((s, i) => s + i.valor, 0) + f.atraso.reduce((s, i) => s + i.r.hojeValor, 0);
+  const atrasoV = f.atraso.reduce((s, i) => s + i.r.atraso, 0);
+  const recHoje = S.pag.filter(p => p.data === TISO).reduce((s, p) => s + (+p.valor || 0) + (+p.amort || 0) + (+p.mora || 0), 0);
+  const C = capitalAgora(outrosAtual()), fs = fechs().filter(x => x.mes < TISO.slice(0, 7)), ult = fs[fs.length - 1];
+  const dlt = ult ? C.total - (+ult.capitalTotal || 0) : null;
+  const P_ = patrimonioPes(), sdE = saldosEmp(TISO);
+  const metaTot = S.inv.reduce((s, I) => s + (+I.meta || 0), 0), mes = TISO.slice(0, 7);
+  const aport = S.pl.filter(l => l.tipo === 'aporte' && l.data.slice(0, 7) === mes).reduce((s, l) => s + (+l.valor || 0), 0);
+  const h = new Date().getHours(), saud = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  const dia = TODAY.toLocaleDateString('pt-BR', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' });
+  const prox = [...f.hoje.map(i => [i, 'hoje']), ...f.prox.map(i => [i, 'prox'])].slice(0, 5);
+  const logo = document.querySelector('.brand img')?.src || '';
+  const acts = [['receber', 'Receber', 'data-go="hoje"'], ['emprestimo', 'Novo empréstimo', 'data-new-emp'], ['cliente', 'Novo cliente', 'data-new-cli'], ['transf', 'Transferir', 'data-transf="e"'],
+    ['pessoal', 'Lançamento pessoal', 'data-go="pessoal"'], ['reneg', 'Renegociar', 'data-go="renegociar"'], ['fechar', 'Fechar o mês', 'data-new-fec'], ['backup', 'Backup', 'id="bkp"']];
+  return `<section class="hm-hero"><div class="hm-mark" aria-hidden="true" style="background-image:url('${logo}')"></div>
+   <div class="hm-id"><img src="${logo}" alt=""><div><span class="hm-hi">${saud}</span><h2>Tavares &amp; Co.</h2><p>Microcrédito Urbano · ${dia}</p></div></div>
+   <button class="hm-today" data-go="hoje"><div><span>A receber hoje</span><b>${R$(hojeV)}</b><em>${f.hoje.length + f.atraso.length} cobrança${f.hoje.length + f.atraso.length === 1 ? '' : 's'} no dia</em></div>
+    <div><span>Em atraso</span><b class="${atrasoV ? 'bad' : ''}">${R0(atrasoV)}</b><em>${f.atraso.length} contrato${f.atraso.length === 1 ? '' : 's'}</em></div>
+    <div><span>Recebido hoje</span><b>${R0(recHoje)}</b><em>abrir cobrança ›</em></div></button>
+  </section>
+  <div class="hm-acts">${acts.map(([k, l, a]) => `<button class="hm-act" ${a}><i>${ico(k)}</i><span>${l}</span></button>`).join('')}</div>
+  <div class="sec"><h3>Panorama</h3><span>${ult ? 'comparado ao fechamento de ' + mesLab(ult.mes) : ''}</span></div>
+  <div class="hm-grid">
+   <button class="hm-card hm-cap" data-go="capital"><span>Capital total</span><b>${R$(C.total)}</b>${dlt != null ? `<em class="${dlt >= 0 ? 'ok' : 'bad'}">${dlt >= 0 ? '▲' : '▼'} ${R$(Math.abs(dlt))} (${pct(ult.capitalTotal ? dlt / ult.capitalTotal : 0)})</em>` : ''}</button>
+   <button class="hm-card" data-go="caixa"><span>Caixa da empresa</span><b>${R0(C.caixa)}</b><em>${CT_E().map(k => esc(k.nome) + ' ' + R0(sdE[k.id])).join(' · ')}</em></button>
+   <button class="hm-card" data-go="emprestimos"><span>Carteira ativa</span><b>${R0(C.aReceber)}</b><em>a receber · principal ${R0(C.principal)}</em></button>
+   <button class="hm-card" data-go="emprestimos" data-filt-go="parados"><span>Carteira parada</span><b>${R0(C.parado)}</b><em>congelados em recuperação</em></button>
+   <button class="hm-card" data-go="pessoal"><span>Patrimônio pessoal</span><b>${R0(P_.total)}</b><em>caixa ${R0(P_.caixa)} · investimentos ${R0(P_.inv)}</em></button>
+   <button class="hm-card hm-wide" data-go="pessoal"><span>Aportes de ${mesLab(mes)}</span><b>${R0(aport)}${metaTot ? ` <small>de ${R0(metaTot)}</small>` : ''}</b>${metaTot ? `<div class="bars"><div class="b"><i style="width:${Math.min(100, 100 * aport / metaTot).toFixed(1)}%"></i></div></div>` : '<em>sem meta definida</em>'}</button>
+  </div>
+  <div class="sec"><h3>Próximos vencimentos</h3><span><button class="lnk" data-go="hoje">ver cobrança</button></span></div>
+  <div class="list">${prox.length ? prox.map(([i, k]) => itemRow(i, k)).join('') : '<div class="empty">Nenhum vencimento nos próximos 7 dias.</div>'}</div>`;
+};
+
 
 /* ---------- arquivos, backup e restauração ---------- */
 async function salvarArquivo(nome, texto, tipo) {
@@ -1148,14 +1214,14 @@ async function restaurar() {
     await LDB.restore(b.docs);
     await LDB.db.collection('historico').add({ ts: new Date().toISOString(), op: 'add', col: 'sistema', doc: 'restauracao', antes: null, depois: null, acao: null, lote: null, cat: 'ajuste', cliente: '', cliId: null, ref: null, valor: 0, sinal: 0,
       titulo: 'Dados importados de arquivo', detalhe: `${b.n('clientes')} clientes, ${b.n('emprestimos')} empréstimos, ${b.n('pagamentos')} pagamentos, ${b.n('historico')} registros de histórico.${b.exportado ? '\nArquivo gerado em ' + new Date(b.exportado).toLocaleString('pt-BR') + '.' : ''}` });
-    close(); toast('Dados importados'); location.hash = 'hoje'; render();
+    close(); toast('Dados importados'); location.hash = 'inicio'; render();
   } catch (e) { console.error(e); toast('Falha ao importar. Nada foi alterado.'); }
 }
 document.addEventListener('change', async e => {
   if (e.target.id !== 'impFile') return; const f = e.target.files?.[0]; e.target.value = ''; if (!f) return;
   try { abrirRestauracao(lerBackup(await f.text())); } catch (er) { toast(er.message === 'vazio' ? 'O arquivo não tem dados do app.' : 'Arquivo inválido. Escolha um backup .json do Tavares & Co.'); }
 });
-const APPV = '2026.11.23-6';
+const APPV = '2026.11.23-7';
 function dadosInfo() {
   const m = LDB.get('meta/app') || {}; const ub = m.ultimoBackup ? new Date(m.ultimoBackup) : null;
   return `<div class="cards"><div class="card"><span>Registros no aparelho</span><b>${LDB.size()}</b><em>${S.cli.length} clientes · ${S.emp.length} empréstimos · ${S.pag.length} pagamentos</em></div>
@@ -1169,19 +1235,19 @@ function lembrete() {
   const m = LDB.get('meta/app') || {}; const dias = m.ultimoBackup ? Math.floor((Date.now() - new Date(m.ultimoBackup)) / 864e5) : null;
   el.innerHTML = dias === null || dias >= 7 ? `<span>${dias === null ? 'Você ainda não fez backup dos dados deste aparelho.' : `Último backup há ${dias} dias.`}</span><button class="btn" id="bkp" style="min-height:38px;padding:6px 12px">Fazer backup</button>` : '';
 }
-V.inicio = () => `<div class="welcome"><img src="apple-touch-icon.png" alt=""><h2>Tavares &amp; Co.</h2>
+V.boasvindas = () => `<div class="welcome"><img src="apple-touch-icon.png" alt=""><h2>Tavares &amp; Co.</h2>
   <p>Este app guarda tudo só neste aparelho, sem conta, sem servidor e sem internet depois de instalado.</p>
   <div class="opts"><label class="btn gold filebtn">Importar meus dados (arquivo .json)<input type="file" id="impFile" accept=".json,application/json"></label>
   <button class="btn" data-zero>Começar do zero</button></div>
   <p class="note">Para trazer sua carteira atual, escolha o arquivo <b>tavares-dados</b> que você salvou em Arquivos.</p></div>`;
 
 /* ---------- render e rotas ---------- */
-const ROUTES = ['hoje', 'emprestimos', 'clientes', 'caixa', 'capital', 'renegociar', 'pessoal', 'ajustes', 'historico'];
-const route = () => { const h = location.hash.slice(1); return ROUTES.includes(h) ? h : 'hoje'; };
+const ROUTES = ['inicio', 'hoje', 'emprestimos', 'clientes', 'caixa', 'capital', 'renegociar', 'pessoal', 'ajustes', 'historico'];
+const route = () => { const h = location.hash.slice(1); return ROUTES.includes(h) ? h : 'inicio'; };
 function render() {
   S.vazio = S.pronto && LDB.size() === 0;
   recompute(); hero(); lembrete();
-  const r = S.vazio ? 'inicio' : route(); document.querySelectorAll('#tabs a').forEach(a => a.classList.toggle('on', a.dataset.r === r)); $('#tabs').style.display = S.vazio ? 'none' : ''; $('#hero').style.display = S.vazio ? 'none' : ''; $('#hlink').classList.toggle('on', r === 'historico'); $('#glink').classList.toggle('on', r === 'ajustes');
+  const r = S.vazio ? 'boasvindas' : route(); document.querySelectorAll('#tabs a').forEach(a => a.classList.toggle('on', a.dataset.r === r)); $('#tabs').style.display = S.vazio ? 'none' : ''; $('#hlink').classList.toggle('on', r === 'historico'); $('#glink').classList.toggle('on', r === 'ajustes'); $('#hero').style.display = r === 'hoje' ? '' : 'none'; document.body.classList.toggle('pg-inicio', r === 'inicio');
   const af = document.activeElement?.id, pos = af && document.activeElement.selectionStart;
   $('#view').innerHTML = V[r]();
   if (af === 'q' || af === 'qc' || af === 'rnq' || af === 'hq') { const el = $('#' + af); el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) {} }
@@ -1221,7 +1287,7 @@ const num = v => v === '' || v == null ? 0 : +v;
 
 document.addEventListener('click', async e => {
   if (e.target.closest('a.wa')) return;
-  const t = e.target.closest('[data-close],[data-htab],[data-filt],[data-new-emp],[data-new-cli],[data-new-mov],[data-pay],[data-emp],[data-cli],[data-mov],[data-edit-emp],[data-del-pag],[data-del-emp],[data-del-cli],[data-del-mov],[data-fill],#bkp,#bkpc,#calcMora,[data-new-fec],[data-fec],[data-del-fec],[data-outros],[data-pnew],[data-pl],[data-del-pl],[data-inv],[data-new-inv],[data-del-inv],[data-pcfg],[data-pmes],[data-paporte],[data-rncli],[data-rnsel],[data-rnclear],#rnCalc,#rnGo,[data-rnundo],[data-rntaxa],[data-hcat],[data-hist],[data-hdoc],[data-hcli],[data-hclear],#hcsv,#hcsvc,[data-pmesgo],[data-transf],[data-ctedit],[data-addct],[data-rmct],[data-ctmov],[data-restore-ok],[data-zero]');
+  const t = e.target.closest('[data-close],[data-htab],[data-filt],[data-new-emp],[data-new-cli],[data-new-mov],[data-pay],[data-emp],[data-cli],[data-mov],[data-edit-emp],[data-del-pag],[data-del-emp],[data-del-cli],[data-del-mov],[data-fill],#bkp,#bkpc,#calcMora,[data-new-fec],[data-fec],[data-del-fec],[data-outros],[data-pnew],[data-pl],[data-del-pl],[data-inv],[data-new-inv],[data-del-inv],[data-pcfg],[data-pmes],[data-paporte],[data-rncli],[data-rnsel],[data-rnclear],#rnCalc,#rnGo,[data-rnundo],[data-rntaxa],[data-hcat],[data-hist],[data-hdoc],[data-hcli],[data-hclear],#hcsv,#hcsvc,[data-pmesgo],[data-transf],[data-ctedit],[data-addct],[data-rmct],[data-ctmov],[data-go],[data-restore-ok],[data-zero]');
   if (e.target === $('#ov')) { close(); render.reopen = null; return; }
   if (!t) return; const d = t.dataset;
   if (d.close !== undefined) { close(); render.reopen = null; }
@@ -1247,6 +1313,7 @@ document.addEventListener('click', async e => {
   else if (d.rnundo) { if (t.dataset.sure) await rnUndo(d.rnundo); else { t.dataset.sure = 1; t.textContent = 'Toque de novo para desfazer'; } }
   else if (d.pnew) { render.reopen = null; sheetPL(d.pnew, null); }
   else if (d.ctmov) { const [tt, ...rest] = d.ctmov.split(':'); render.reopen = null; sheetCtMov(tt, rest.join(':')); }
+  else if (d.go) { if (d.filtGo) S.filtro = d.filtGo; if (location.hash === '#' + d.go) render(); else location.hash = d.go; scrollTo(0, 0); }
   else if (d.transf) { render.reopen = null; sheetTransf(d.transf); }
   else if (d.ctedit) { if (d.ctedit === 'p') { render.reopen = null; sheetPesCfg(); } else { location.hash = 'ajustes'; setTimeout(() => $('#contasEmp')?.scrollIntoView({ behavior: 'smooth' }), 120); } }
   else if (d.addct) { const box = document.querySelector(`.cted[data-ct="${d.addct}"]`); box.insertAdjacentHTML('beforeend', ctRow()); box.lastElementChild.querySelector('[name=ct_nome]').focus(); }
@@ -1288,7 +1355,7 @@ document.addEventListener('click', async e => {
     if (await salvarArquivo(`tavares-backup-${TISO}.json`, data, 'application/json')) { await LDB.put('meta/app', { ...(LDB.get('meta/app') || {}), ultimoBackup: new Date().toISOString() }); toast('Backup gerado'); render(); }
   }
   else if (d.restoreOk !== undefined) restaurar();
-  else if (d.zero !== undefined) { if (await W(() => dref('config', 'geral').set(Object.fromEntries(Object.entries(DEF).filter(([k]) => k !== 'holSet'))), 'Pronto. Comece cadastrando clientes e empréstimos.')) location.hash = 'hoje'; }
+  else if (d.zero !== undefined) { if (await W(() => dref('config', 'geral').set(Object.fromEntries(Object.entries(DEF).filter(([k]) => k !== 'holSet'))), 'Pronto. Comece cadastrando clientes e empréstimos.')) location.hash = 'inicio'; }
 });
 function onCliChange() { const f = $('#femp'); if (!f) return; const v = f.elements.cliente.value; $('#novoCliWrap').style.display = v === '__novo' ? 'block' : 'none';
   if (v && v !== '__novo' && !f.dataset.id) { const c = cliById(v); f.elements.taxa.value = +(((c?.vip ? cfg().taxaVip : cfg().taxa)) * 100).toFixed(2); simUpdate(); } }
