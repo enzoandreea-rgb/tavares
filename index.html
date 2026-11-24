@@ -111,7 +111,7 @@ body.pg-inicio .top{display:none}body.pg-inicio main{padding-top:calc(env(safe-a
 .hm-card em{display:block;font-style:normal;font-size:11px;color:var(--mut);overflow-wrap:anywhere;line-height:1.35}.hm-card em.ok{color:var(--ok)}.hm-card em.bad{color:var(--bad)}.hm-card:focus-visible{outline:2px solid var(--gold)}
 @media(max-width:759px){.hm-wide{grid-column:1/-1}}
 .hm-cap{grid-column:1/-1;display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap;background:linear-gradient(135deg,var(--sf),light-dark(#F6EFDD,#1A2338));border-color:light-dark(#E5D6AE,#3A3A2E)}.hm-cap b{font-family:"Playfair Display",serif;font-size:26px;color:var(--gold);margin:2px 0 0}.hm-cap em{font-size:12px;font-weight:600;text-align:right}
-.contas{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:6px}.conta{cursor:pointer;background:var(--sf);border:1px solid var(--line);border-radius:12px;padding:12px 14px}.conta span{display:block;font-size:12px;color:var(--mut);margin-bottom:2px}.conta b{font-size:18px;font-variant-numeric:tabular-nums}.conta-tr{grid-column:1/-1;min-height:40px;justify-content:center;font-size:13.5px}.contas{grid-template-columns:repeat(2,minmax(0,1fr))!important}@media(min-width:760px){.contas{grid-template-columns:repeat(4,minmax(0,1fr))!important}.conta-tr{grid-column:auto}}.warn-txt{color:var(--warn);display:block}.inv .act,.row .act{display:flex;gap:8px;flex-wrap:wrap}.ctnow{display:grid;gap:4px;font-size:14px;margin-top:4px}.ctnow b{font-weight:600}.cted{display:grid;gap:8px}.cthead,.ctrow{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 48px;gap:8px;align-items:center}.cthead span{font-size:12px;color:var(--mut)}.ctrow .del{height:48px;min-height:48px;padding:0;justify-content:center;font-size:20px}
+.contas{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:6px}.conta{cursor:pointer;background:var(--sf);border:1px solid var(--line);border-radius:12px;padding:12px 14px}.conta span{display:block;font-size:12px;color:var(--mut);margin-bottom:2px}.conta b{font-size:18px;font-variant-numeric:tabular-nums}.conta-tr{grid-column:1/-1;min-height:40px;justify-content:center;font-size:13.5px}.contas{grid-template-columns:repeat(2,minmax(0,1fr))!important}@media(min-width:760px){.contas{grid-template-columns:repeat(4,minmax(0,1fr))!important}.conta-tr{grid-column:auto}}.warn-txt{color:var(--warn);display:block}.inv .act,.row .act{display:flex;gap:8px;flex-wrap:wrap}.rn-modo{font-size:12.5px;line-height:1.45;color:var(--mut);margin:6px 0 2px}.ctnow{display:grid;gap:4px;font-size:14px;margin-top:4px}.ctnow b{font-weight:600}.cted{display:grid;gap:8px}.cthead,.ctrow{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 48px;gap:8px;align-items:center}.cthead span{font-size:12px;color:var(--mut)}.ctrow .del{height:48px;min-height:48px;padding:0;justify-content:center;font-size:20px}
 .bars .b{height:10px;border-radius:6px;background:var(--sf2);overflow:hidden;margin-top:6px}.bars .b i{display:block;height:100%;background:var(--gold);border-radius:6px}
 .mnav{display:flex;align-items:center;gap:6px;flex:none}.mnav b{min-width:92px;text-align:center;font-family:'Playfair Display',serif;font-size:18px}
 .sync{font-size:12px;color:#AEB5C4;display:flex;align-items:center;gap:6px}
@@ -899,19 +899,25 @@ function rnCalc() {
   const base = r2(Math.max(0, b.saldo - entrada + acrescimo - desconto));
   const L = { freq, data, primeiroVenc };
   const mpp = freq === 'unico' ? Math.max(1, Math.round((P(primeiroVenc) - P(data)) / 864e5 / 30)) : FREQ[freq].m;
-  let n = freq === 'unico' ? 1 : Math.max(1, Math.floor(+f.n || 1));
+  let n = freq === 'unico' ? 1 : Math.max(1, Math.floor(+f.n || 1)), modo = 'n', parcela, taxaEf = taxa;
   const desejada = +f.parcelaDesejada || 0;
-  if (desejada > 0 && freq !== 'unico') { for (n = 1; n < 600; n++) { if (base * (1 + taxa * mpp * n) / n <= desejada + 0.005) break; } }
-  const parcela = r2(base * (1 + taxa * mpp * n) / n), total = r2(parcela * n);
+  if (desejada > 0 && freq !== 'unico' && n > 1) { // parcela e quantidade combinadas: vale o que foi acordado, os juros saem daí
+    modo = 'fixo'; parcela = r2(desejada); taxaEf = base > 0 ? Math.max(0, (parcela * n / base - 1) / (mpp * n)) : 0;
+  } else if (desejada > 0 && freq !== 'unico') { modo = 'parcela'; for (n = 1; n < 600; n++) { if (base * (1 + taxa * mpp * n) / n <= desejada + 0.005) break; } }
+  if (modo !== 'fixo') parcela = r2(base * (1 + taxa * mpp * n) / n);
+  const total = r2(parcela * n);
   const sched = schedule({ freq, primeiroVenc }, cfg().holSet, n);
   const principal = r2(b.saldo > 0 ? b.princ * (b.saldo - entrada) / b.saldo : 0);
-  return { b, entrada, desconto, acrescimo, taxa, freq, primeiroVenc, base, n, parcela, total, sched, principal, juros: r2(total - base), dif: r2(total + entrada - b.saldo) };
+  return { b, entrada, desconto, acrescimo, taxa: taxaEf, freq, primeiroVenc, base, n, parcela, total, sched, principal, modo, mpp, juros: r2(total - base), dif: r2(total + entrada - b.saldo) };
 }
 function rnUpdate() {
   const box = $('#rnSim'); if (!box) return; const x = rnCalc(); const ok = x.b.saldo > 0 && x.base > 0;
-  box.innerHTML = `<small>Novo contrato</small><div><b>${R$(x.parcela)}</b> <small>× ${x.n} · ${FREQ[x.freq].l}</small></div>
+  const arred = x.modo !== 'fixo' && !x.taxa && Math.abs(x.juros) < x.n * .01 + .001;
+  const modoTxt = x.modo === 'fixo' ? `Parcela e quantidade combinadas: ${x.n} × ${R$(x.parcela)}. O campo de juros é ignorado; os juros implícitos do acordo são ${pct(x.taxa)} a.m.${x.total < x.base ? ' Atenção: o total fica abaixo do valor renegociado.' : ''}`
+    : x.modo === 'parcela' ? `Nº de parcelas calculado a partir da parcela desejada de ${R$(+S.rn.f.parcelaDesejada)} (o nº digitado foi substituído). Para fixar os dois, preencha nº de parcelas maior que 1 e a parcela desejada.` : '';
+  box.innerHTML = `<small>Novo contrato</small><div><b>${R$(x.parcela)}</b> <small>× ${x.n} · ${FREQ[x.freq].l}</small></div>${modoTxt ? `<p class="rn-modo">${modoTxt}</p>` : ''}
   <div class="g"><div><span>Saldo atual</span>${R$(x.b.saldo)}</div><div><span>Entrada</span>${R$(x.entrada)}</div><div><span>Acréscimo</span>${R$(x.acrescimo)}</div>
-  <div><span>Desconto</span>${R$(x.desconto)}</div><div><span>Valor renegociado</span>${R$(x.base)}</div><div><span>Juros novos</span>${R$(x.juros)}</div>
+  <div><span>Desconto</span>${R$(x.desconto)}</div><div><span>Valor renegociado</span>${R$(x.base)}</div><div><span>${arred ? 'Arredondamento' : 'Juros novos'}</span>${R$(x.juros)}</div>
   <div><span>Total a receber</span>${R$(x.total)}</div><div><span>1º vencimento</span>${dBR(x.sched[0])}</div><div><span>Último</span>${dBR(x.sched[x.sched.length - 1])}</div></div>
   <small style="display:block;margin-top:10px">${x.dif >= 0 ? 'Você recebe ' + R$(x.dif) + ' a mais' : 'Você abre mão de ' + R$(-x.dif)} em relação ao saldo atual (entrada + novo total − saldo).</small>`;
   const go = $('#rnGo'); if (go) go.disabled = !ok;
@@ -1398,7 +1404,7 @@ document.addEventListener('change', async e => {
   if (e.target.id !== 'impFile') return; const f = e.target.files?.[0]; e.target.value = ''; if (!f) return;
   try { abrirRestauracao(lerBackup(await f.text())); } catch (er) { toast(er.message === 'vazio' ? 'O arquivo não tem dados do app.' : 'Arquivo inválido. Escolha um backup .json do Tavares & Co.'); }
 });
-const APPV = '2026.11.24-8';
+const APPV = '2026.11.24-9';
 function dadosInfo() {
   const m = LDB.get('meta/app') || {}; const ub = m.ultimoBackup ? new Date(m.ultimoBackup) : null;
   return `<div class="cards"><div class="card"><span>Registros no aparelho</span><b>${LDB.size()}</b><em>${S.cli.length} clientes · ${S.emp.length} empréstimos · ${S.pag.length} pagamentos</em></div>
