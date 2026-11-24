@@ -506,12 +506,15 @@ const CT_P = () => { const c = pesCfg(); return Array.isArray(c.contas) && c.con
 const ctList = t => t === 'e' ? CT_E() : CT_P();
 const ctNome = (t, id) => { const ks = ctList(t); return (ks.find(k => k.id === id) || ks[0]).nome; };
 const ctOpts = (t, sel) => ctList(t).map(k => `<option value="${esc(k.id)}"${k.id === sel ? ' selected' : ''}>${esc(k.nome)}</option>`).join('');
+const ctSel = (sel, rotPes) => { const se = saldosEmp(TISO), spp = saldosPes(TISO);
+  return `<optgroup label="Empresa">${CT_E().map(k => `<option value="e:${esc(k.id)}"${'e:' + k.id === sel ? ' selected' : ''}>${esc(k.nome)} · ${R0(se[k.id])}</option>`).join('')}</optgroup><optgroup label="${rotPes}">${CT_P().map(k => `<option value="p:${esc(k.id)}"${'p:' + k.id === sel ? ' selected' : ''}>${esc(k.nome)} · ${R0(spp[k.id])}</option>`).join('')}</optgroup>`; };
+const ctLer = v => { const [lado, ...r] = String(v || '').split(':'); return { lado, id: r.join(':') }; };
 const ctEspecie = t => ctList(t).find(k => /esp[eé]cie|dinheiro/i.test(k.nome))?.id;
 const ctPadraoE = forma => (forma === 'Dinheiro' && ctEspecie('e')) || CT_E()[0].id;
 function fluxosEmp(fim) { // tudo que mexe nas contas da empresa depois do fim do dia do saldo inicial
   const c = cfg(), ini = c.dataSaldo, out = [], cn = id => esc(cliNome(S.emp.find(l => l.id === id)?.cliente));
   for (const p of S.pag) if (p.destino !== 'pessoal' && p.data > ini && p.data <= fim) out.push({ conta: p.conta, v: (+p.valor || 0) + (+p.amort || 0) + (+p.mora || 0), data: p.data, d: 'Recebimento · ' + cn(p.emp) });
-  for (const L of S.emp) if (!L.importado && !L.reneg && L.data > ini && L.data <= fim) out.push({ conta: L.conta, v: -(+L.valor || 0), data: L.data, d: 'Empréstimo concedido · ' + esc(cliNome(L.cliente)) });
+  for (const L of S.emp) if (!L.importado && !L.reneg && L.origem !== 'pessoal' && L.data > ini && L.data <= fim) out.push({ conta: L.conta, v: -(+L.valor || 0), data: L.data, d: 'Empréstimo concedido · ' + esc(cliNome(L.cliente)) });
   for (const m of S.cx) if (m.data > ini && m.data <= fim) { const v = +m.valor || 0, d = (HTIPC[m.tipo] || 'Movimento') + (m.desc ? ' · ' + esc(m.desc) : '');
     if (m.tipo === 'transf') { out.push({ conta: m.conta, v: -v, data: m.data, d }); out.push({ conta: m.contaDest, v, data: m.data, d }); }
     else out.push({ conta: m.conta, v: (m.tipo === 'aporte' || m.tipo === 'ajuste+' ? 1 : -1) * v, data: m.data, d }); }
@@ -523,6 +526,7 @@ function fluxosPes(fim) {
     if (l.tipo === 'receita' || l.tipo === 'entrada' || l.tipo === 'resgate') out.push({ conta: l.conta, v, data: l.data, d });
     else if (l.tipo === 'aporte' || l.tipo === 'saida' || (l.tipo === 'cartao' && l.pago)) out.push({ conta: l.conta, v: -v, data: l.data, d });
     else if (l.tipo === 'transf') { out.push({ conta: l.conta, v: -v, data: l.data, d }); out.push({ conta: l.contaDest, v, data: l.data, d }); } }
+  for (const L of S.emp) if (L.origem === 'pessoal' && !L.reneg && L.data > c.dataSaldo && L.data <= fim) out.push({ conta: L.contaPes, v: -(+L.valor || 0), data: L.data, d: 'Empréstimo concedido do seu bolso · ' + esc(cliNome(L.cliente)) });
   for (const p of S.pag) if (p.destino === 'pessoal' && p.data > c.dataSaldo && p.data <= fim) out.push({ conta: p.contaPes, v: (+p.valor || 0) + (+p.amort || 0) + (+p.mora || 0), data: p.data, d: 'Recebimento direto · ' + esc(cliNome(S.emp.find(l => l.id === p.emp)?.cliente)) });
   for (const m of S.cx) { if (m.data <= c.dataSaldo || m.data > fim) continue; const d = (m.tipo === 'retirada' ? 'Retirada da empresa' : 'Aporte na empresa') + (m.desc ? ' · ' + esc(m.desc) : '');
     if (m.tipo === 'retirada') out.push({ conta: m.contaPes, v: +m.valor || 0, data: m.data, d }); if (m.tipo === 'aporte') out.push({ conta: m.contaPes, v: -(+m.valor || 0), data: m.data, d }); }
@@ -774,7 +778,8 @@ function pesStats(mes) {
   const ret = S.cx.filter(x => x.tipo === 'retirada' && x.data >= a && x.data <= b).reduce((s, x) => s + (+x.valor || 0), 0)
     + S.pag.filter(x => x.destino === 'pessoal' && x.data >= a && x.data <= b).reduce((s, x) => s + (+x.valor || 0) + (+x.amort || 0) + (+x.mora || 0), 0);
   const cart = {}; for (const k of CARTOES) cart[k] = sum(S.pl.filter(l => l.tipo === 'cartao' && l.mesRef === mes && l.cartao === k));
-  const rec = sum(L.filter(l => l.tipo === 'receita')) + ret, ent = sum(L.filter(l => l.tipo === 'entrada')), apo = sum(L.filter(l => l.tipo === 'aporte')), sai = sum(L.filter(l => l.tipo === 'saida'));
+  const naEmp = S.cx.filter(x => x.tipo === 'aporte' && x.data >= a && x.data <= b).reduce((s, x) => s + (+x.valor || 0), 0) + S.emp.filter(x => x.origem === 'pessoal' && !x.reneg && x.data >= a && x.data <= b).reduce((s, x) => s + (+x.valor || 0), 0);
+  const rec = sum(L.filter(l => l.tipo === 'receita')) + ret, ent = sum(L.filter(l => l.tipo === 'entrada')), apo = sum(L.filter(l => l.tipo === 'aporte')), sai = sum(L.filter(l => l.tipo === 'saida')) + naEmp;
   const cartTot = cart.Santander + cart.Nubank;
   return { a, b, rec, ret, ent, apo, sai, cart, cartTot, sobra: rec + ent - cartTot - apo - sai };
 }
@@ -1040,7 +1045,7 @@ function sheetEmpForm(id) {
    <label id="novoCliWrap" style="display:none">Nome do novo cliente<input name="novoCli" placeholder="Nome completo"></label>
    <div class="grid2"><label>Valor emprestado<input name="valor" type="number" step="0.01" min="0" required value="${L?.valor ?? ''}"></label>
    <label>Data do empréstimo<input name="data" type="date" required value="${data}"></label></div>
-   ${L?.importado ? '' : `<label>Sai de<select name="conta">${ctOpts('e', L?.conta || CT_E()[0].id)}</select></label>`}
+   ${L?.importado ? '' : `<label>Sai de<select name="conta">${ctSel(L?.origem === 'pessoal' ? 'p:' + L.contaPes : 'e:' + (L?.conta || CT_E()[0].id), 'Pessoal (sai do seu bolso)')}</select></label><p class="note" id="empOrig" style="margin-top:-4px"></p>`}
    <div class="grid2"><label>Modalidade<select name="modalidade"><option value="parcelado">Parcelado (juros fixo)</option><option value="rotativo"${L?.modalidade === 'rotativo' ? ' selected' : ''}>Rotativo (só juros)</option></select></label>
    <label>Frequência<select name="freq">${Object.entries(FREQ).map(([k, v]) => `<option value="${k}"${k === freq ? ' selected' : ''}>${v.l}</option>`).join('')}</select></label></div>
    <div class="grid3"><label>Nº de parcelas<input name="n" type="number" min="1" value="${L?.n ?? 1}"></label>
@@ -1052,6 +1057,7 @@ function sheetEmpForm(id) {
    <button class="btn pri" type="submit">${L ? 'Salvar alterações' : 'Registrar empréstimo'}</button>
   </form>`);
   simUpdate();
+  empOrigSync();
 }
 function simUpdate() {
   const f = $('#femp'); if (!f) return; const g = n => f.elements[n].value;
@@ -1063,6 +1069,7 @@ function simUpdate() {
   $('#simbox').innerHTML = rot ? `<small>Juros por período</small><div><b>${R$(r.parcela)}</b></div><div class="g"><div><span>Principal</span>${R$(valor)}</div><div><span>Taxa</span>${pct(taxa)} a.m.</div><div><span>1º venc.</span>${dBR(L.primeiroVenc)}</div></div>`
     : `<small>Parcela</small><div><b>${R$(r.parcela)}</b> <small>× ${r.n}</small></div><div class="g"><div><span>Total a receber</span>${R$(r.total)}</div><div><span>Juros</span>${R$(r.jurosTotal)}</div><div><span>Último venc.</span>${dBR(r.sched[r.sched.length - 1])}</div></div><small style="display:block;margin-top:8px">${sch}</small>`;
 }
+function empOrigSync() { const f = $('#femp'); if (!f || !f.elements.conta) return; const info = () => { const el = $('#empOrig'); if (el) el.textContent = f.elements.conta.value.startsWith('p:') ? 'Conta como aporte seu na empresa e empréstimo no mesmo ato: o valor sai da conta pessoal e não passa pelo caixa da empresa. Os recebimentos depois entram onde você escolher.' : ''; }; f.elements.conta.addEventListener('change', info); info(); }
 function payContaSync() { const f = $('#fpag'); if (!f || !f.elements.conta) return;
   const info = () => { const pes = f.elements.conta.value.startsWith('p:'); $('#payDest').textContent = pes ? 'Conta como recebimento da empresa e retirada sua no mesmo ato: o valor entra direto na conta pessoal e não passa pelo caixa da empresa.' : ''; };
   f.elements.forma.addEventListener('change', () => { if (f.elements.conta.value.startsWith('e:')) f.elements.conta.value = 'e:' + ctPadraoE(f.elements.forma.value); info(); });
@@ -1074,7 +1081,7 @@ function sheetPay(id) {
   <form id="fpag" class="stack" data-eid="${id}">
    <div class="grid2"><label>Data<input name="data" type="date" required value="${TISO}"></label>
    <label>Forma<select name="forma">${['Pix', 'Dinheiro', 'Transferência', 'Cartão', 'Outro'].map(x => `<option>${x}</option>`).join('')}</select></label></div>
-   <label>Recebido em<select name="conta"><optgroup label="Empresa">${CT_E().map(k => `<option value="e:${esc(k.id)}"${k.id === ctPadraoE('Pix') ? ' selected' : ''}>${esc(k.nome)}</option>`).join('')}</optgroup><optgroup label="Pessoal (vai direto para você)">${CT_P().map(k => `<option value="p:${esc(k.id)}">${esc(k.nome)}</option>`).join('')}</optgroup></select></label>
+   <label>Recebido em<select name="conta">${ctSel('e:' + ctPadraoE('Pix'), 'Pessoal (vai direto para você)')}</select></label>
    <p class="note" id="payDest" style="margin-top:-4px"></p>
    <label>${r.rot ? 'Juros pagos' : 'Valor das parcelas'}<input name="valor" type="number" step="0.01" min="0" value="${due}"></label>
    <div class="chips">${[['Devido', due], ['1 parcela', r.parcela], ['Quitar tudo', r.rot ? r.atraso : r.saldo]].filter(x => x[1] > 0).map(([l, v]) => `<button type="button" class="chip" data-fill="${v}">${l}: ${R$(v)}</button>`).join('')}</div>
@@ -1165,7 +1172,7 @@ const HTIPC = { aporte: 'Aporte do sócio', retirada: 'Retirada do sócio', desp
 const HLBL = { cliente: 'Cliente', valor: 'Valor', parcela: 'Parcela', n: 'Nº de parcelas', freq: 'Frequência', modalidade: 'Modalidade', data: 'Data', primeiroVenc: '1º vencimento', taxa: 'Taxa', situacao: 'Situação', obs: 'Observação',
   nome: 'Nome', tel: 'Telefone', cpf: 'CPF', end: 'Endereço', indic: 'Indicação', vip: 'VIP', sit: 'Situação', mora: 'Mora', amort: 'Amortização', forma: 'Forma', emp: 'Contrato', tipo: 'Tipo', desc: 'Descrição',
   cartao: 'Cartão', pago: 'Pago', mesRef: 'Mês de referência', inv: 'Investimento', inst: 'Instituição', meta: 'Meta mensal', saldoBase: 'Saldo base', dataBase: 'Data base', capitalTotal: 'Capital total',
-  saldoInicial: 'Saldo inicial', dataSaldo: 'Data do saldo', salario: 'Salário', taxaVip: 'Taxa VIP', teto: 'Teto da mora', tolerancia: 'Tolerância', limInad: 'Dias até inadimplente', mes: 'Mês', outros: 'Outros ativos', conta: 'Conta', contaDest: 'Para a conta', contaPes: 'Conta pessoal', contas: 'Contas', destino: 'Destino' };
+  saldoInicial: 'Saldo inicial', dataSaldo: 'Data do saldo', salario: 'Salário', taxaVip: 'Taxa VIP', teto: 'Teto da mora', tolerancia: 'Tolerância', limInad: 'Dias até inadimplente', mes: 'Mês', outros: 'Outros ativos', conta: 'Conta', contaDest: 'Para a conta', contaPes: 'Conta pessoal', contas: 'Contas', destino: 'Destino', origem: 'Origem do dinheiro' };
 const HIGN = new Set(['criado', 'atualizado', 'importado', 'sitAnterior', 'renegPara', 'renegData', 'saldoTransferido', 'reneg', 'feriados', 'origem', 'detalhe']);
 const HMONEY = new Set(['valor', 'parcela', 'amort', 'meta', 'saldoBase', 'capitalTotal', 'saldoInicial', 'salario', 'teto', 'outros']);
 function hFmt(c, k, v) {
@@ -1204,7 +1211,7 @@ function hDesc(e) {
   }
   if (c === 'emprestimos') {
     const rn = !!(x.reneg || (e.acao && /renegocia/i.test(e.acao)) || d?.situacao === 'substituido' || a?.situacao === 'substituido'); let t;
-    if (op === 'add') t = x.reneg ? `Contrato de renegociação: ${x.n}× ${R$(x.parcela)}` : `Novo empréstimo de ${R$(x.valor)} · ${x.n || 1}× ${R$(x.parcela)}`;
+    if (op === 'add') t = x.reneg ? `Contrato de renegociação: ${x.n}× ${R$(x.parcela)}` : `Novo empréstimo de ${R$(x.valor)} · ${x.n || 1}× ${+x.parcela ? R$(x.parcela) : 'parcela calculada'}${x.origem === 'pessoal' ? ' · saiu de ' + ctNome('p', x.contaPes) + ' (pessoal)' : x.conta ? ' · saiu de ' + ctNome('e', x.conta) : ''}`;
     else if (op === 'delete') t = `Empréstimo excluído · ${x.n || 1}× ${R$(x.parcela)}`;
     else if (d?.situacao === 'substituido' && a?.situacao !== 'substituido') t = `Contrato encerrado por renegociação · saldo de ${R$(d.saldoTransferido)} transferido`;
     else if (a?.situacao === 'substituido' && d?.situacao !== 'substituido') t = 'Contrato restaurado (renegociação desfeita)';
@@ -1376,7 +1383,7 @@ document.addEventListener('change', async e => {
   if (e.target.id !== 'impFile') return; const f = e.target.files?.[0]; e.target.value = ''; if (!f) return;
   try { abrirRestauracao(lerBackup(await f.text())); } catch (er) { toast(er.message === 'vazio' ? 'O arquivo não tem dados do app.' : 'Arquivo inválido. Escolha um backup .json do Tavares & Co.'); }
 });
-const APPV = '2026.11.24-5';
+const APPV = '2026.11.24-6';
 function dadosInfo() {
   const m = LDB.get('meta/app') || {}; const ub = m.ultimoBackup ? new Date(m.ultimoBackup) : null;
   return `<div class="cards"><div class="card"><span>Registros no aparelho</span><b>${LDB.size()}</b><em>${S.cli.length} clientes · ${S.emp.length} empréstimos · ${S.pag.length} pagamentos</em></div>
@@ -1537,7 +1544,7 @@ document.addEventListener('submit', async e => {
     if (!cid) return toast('Selecione o cliente.');
     const body = { cliente: cid, valor: num(g('valor')), data: g('data'), modalidade: g('modalidade'), freq: g('freq'), n: g('freq') === 'unico' || g('modalidade') === 'rotativo' ? 1 : Math.max(1, num(g('n'))),
       primeiroVenc: g('primeiroVenc'), taxa: num(g('taxa')) / 100, parcela: num(g('parcela')), obs: g('obs').trim() };
-    if (f.elements.conta) body.conta = g('conta');
+    if (f.elements.conta) { const o = ctLer(g('conta')); if (o.lado === 'p') Object.assign(body, { origem: 'pessoal', contaPes: o.id, conta: null }); else Object.assign(body, { conta: o.id, origem: null, contaPes: null }); }
     if (!(body.valor > 0)) return toast('Informe o valor.');
     const id = f.dataset.id;
     if (await W(() => id ? col('emprestimos').doc(id).update(body) : col('emprestimos').add({ ...body, situacao: 'ativo', criado: new Date().toISOString() }), id ? 'Empréstimo atualizado' : 'Empréstimo registrado')) { close(); render.reopen = null; }
