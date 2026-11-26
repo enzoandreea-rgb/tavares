@@ -779,6 +779,15 @@ function faturas() { // cada fatura = cartão + mês: valores lançados à mão 
     else if (l.tipo === 'compra') for (const q of parcelasCompra(l)) { const f = get(l.cartao, q.mesRef); f.compras.push({ l, ...q }); f.compr += q.v; } }
   for (const f of M.values()) { f.total = r2(f.manual + f.compr); const pd = f.docs.find(d => d.pago); f.pago = !!pd; f.dataPag = pd?.data || null; f.conta = pd?.conta; f.forca = !!pd?.contaForca; f.venc = vencFatura(f.cartao, f.mesRef); }
   return [...M.values()]; }
+const fechaFatura = (nome, mm) => { const k = cartCfg(nome), fe = +k.fecha || 3, ve = +k.vence || 10; return diaNoMes(ve > fe ? mm : addMes(mm, -1), fe); }; // compras até a véspera deste dia entram nesta fatura
+const fatAberta = nome => faturaDaCompra(nome, TISO);
+const fatEstado = f => f.pago ? 'paga' : f.venc < TISO ? 'vencida' : fechaFatura(f.cartao, f.mesRef) <= TISO ? 'fechada' : 'aberta';
+const fatStatus = f => { const e = fatEstado(f); return e === 'paga' ? 'paga em ' + dBR(f.dataPag) : e === 'vencida' ? 'venceu ' + dBR(f.venc) : e === 'fechada' ? 'fechada · vence ' + dBR(f.venc) : 'fecha ' + dBR(fechaFatura(f.cartao, f.mesRef)) + ' · vence ' + dBR(f.venc); };
+const cartoesBloco = () => { const FS = faturas(), out = [], btn = (f, lab) => `<button class="card card-btn" data-fat="${esc(f.cartao)}|${f.mesRef}"><span>${esc(f.cartao)} · ${lab} ${mesLab(f.mesRef)}</span><b>${R$(f.total)}</b><em${fatEstado(f) === 'vencida' ? ' style="color:var(--bad)"' : ''}>${fatStatus(f)} ›</em></button>`;
+  for (const k of CARTOES_()) { const ab = fatAberta(k);
+    for (const f of FS.filter(f => f.cartao === k && f.mesRef < ab && !f.pago && f.total).sort((a, b) => a.mesRef.localeCompare(b.mesRef))) out.push(btn(f, 'fatura ' + fatEstado(f)));
+    out.push(btn(fatura(k, ab), 'fatura atual')); }
+  return `<div class="sec"><h3>Cartões de crédito</h3><span><button class="lnk" data-pcfg>fechamento e vencimento</button></span></div><div class="contas">${out.join('')}<button class="btn conta-tr" data-compra="">+ Compra no crédito</button></div>`; };
 const fatura = (c, m) => faturas().find(f => f.cartao === c && f.mesRef === m) || { cartao: c, mesRef: m, docs: [], compras: [], manual: 0, compr: 0, total: 0, pago: false, venc: vencFatura(c, m) };
 const saldosPes = fim => saldosCt('p', fim);
 function caixaPes(fim) { return Object.values(saldosPes(fim)).reduce((a, b) => a + b, 0); }
@@ -832,6 +841,7 @@ V.pessoal = () => {
    <div class="card"><span>Meta de aporte mensal</span><b>${R0(metaTot)}</b><em>${R0(S.inv.reduce((s, I) => s + S.pl.filter(l => l.inv === I.id && l.tipo === 'aporte' && l.data >= st.a && l.data <= st.b).reduce((a, l) => a + (+l.valor || 0), 0), 0))} aportado em ${mesLab(mes)}</em></div>
   </div>
   ${contasBloco('p')}
+  ${cartoesBloco()}
   <div class="sec" style="margin-top:22px"><div class="mnav"><button class="chip" data-pmes="-1" aria-label="Mês anterior">‹</button><b>${mesLab(mes)}</b><button class="chip" data-pmes="1" aria-label="Próximo mês">›</button></div>
    <div class="chips"><button class="chip on" data-compra="">+ Compra no crédito</button><button class="chip" data-pnew="receita">+ Receita</button><button class="chip" data-pnew="aporte">+ Aporte</button><button class="chip" data-pnew="saida">+ Outro</button></div></div>
   <div class="cards">
@@ -1236,10 +1246,12 @@ function sheetCompra(id, cartaoPre) {
 }
 function sheetFatura(cartao, mes) {
   const f = fatura(cartao, mes), itens = [...f.compras].sort((a, b) => a.l.data.localeCompare(b.l.data));
-  const sp = saldosPes(TISO);
+  const sp = saldosPes(TISO), est = fatEstado(f), ab = fatAberta(cartao), fa = ab > mes ? fatura(cartao, ab) : null;
   open(`<h2>Fatura ${esc(cartao)} · ${mesLab(mes)}</h2>
-  <div class="cards" style="margin-bottom:10px"><div class="card"><span>Total</span><b>${R$(f.total)}</b><em>${f.compras.length} compra${f.compras.length === 1 ? '' : 's'}${f.manual ? ' + ' + R$(f.manual) + ' lançado à mão' : ''}</em></div>
-   <div class="card"><span>${f.pago ? 'Paga em' : 'Vencimento'}</span><b>${dBR(f.pago ? f.dataPag : f.venc)}</b><em>${f.pago ? 'com ' + esc(ctNome('p', f.conta)) : P(f.venc) < TODAY ? 'vencida' : 'em aberto'}</em></div></div>
+  <div class="mnav" style="margin:-4px 0 12px"><button class="chip" data-fat="${esc(cartao)}|${addMes(mes, -1)}" aria-label="Fatura anterior">‹ ${mesLab(addMes(mes, -1))}</button><button class="chip" data-fat="${esc(cartao)}|${addMes(mes, 1)}" aria-label="Próxima fatura">${mesLab(addMes(mes, 1))} ›</button></div>
+  <div class="cards" style="margin-bottom:10px"><div class="card"><span>Total</span><b>${R$(f.total)}</b><em>${[f.compras.length ? f.compras.length + ' compra' + (f.compras.length === 1 ? '' : 's') : '', f.manual ? R$(f.manual) + ' lançado à mão' : ''].filter(Boolean).join(' + ') || 'sem lançamentos'}</em></div>
+   <div class="card"><span>${f.pago ? 'Paga em' : 'Vencimento'}</span><b>${dBR(f.pago ? f.dataPag : f.venc)}</b><em${est === 'vencida' ? ' style="color:var(--bad)"' : ''}>${f.pago ? 'com ' + esc(ctNome('p', f.conta)) : est === 'aberta' ? 'aberta · fecha ' + dBR(fechaFatura(cartao, mes)) : est === 'fechada' ? 'fechada em ' + dBR(fechaFatura(cartao, mes)) : 'vencida · fechou ' + dBR(fechaFatura(cartao, mes))}</em></div></div>
+  ${fa ? `<button class="card card-btn" style="width:100%;margin-bottom:10px" data-fat="${esc(cartao)}|${ab}"><span>Compras feitas a partir de ${dBR(fechaFatura(cartao, mes))} estão na fatura atual</span><b>${mesLab(ab)} · ${R$(fa.total)}</b><em>${fa.compras.length} compra${fa.compras.length === 1 ? '' : 's'} · ver itens ›</em></button>` : ''}
   <div class="list">${itens.map(q => `<div class="row" data-compra="${q.l.id}"><div><div class="nm">${esc(q.l.desc || 'Compra')}</div><div class="meta">${dBR(q.l.data)}${q.n > 1 ? ` · parcela ${q.i}/${q.n} de ${R$(q.l.valor)}` : ''}</div></div><div class="val">${R$(q.v)}</div></div>`).join('')}
    ${f.docs.filter(d => +d.valor).map(d => `<div class="row" data-pl="${d.id}"><div><div class="nm">${esc(d.desc || 'Valor lançado à mão')}</div><div class="meta">lançamento direto na fatura</div></div><div class="val">${R$(d.valor)}</div></div>`).join('')}
    ${itens.length || f.manual ? '' : '<div class="empty">Nenhuma compra nesta fatura.</div>'}</div>
@@ -1312,7 +1324,7 @@ function hDesc(e) {
     const rota = x.tipo === 'transf' ? ` · ${ctNome('e', x.conta)} → ${ctNome('e', x.contaDest)}` : x.tipo === 'retirada' ? ` · ${ctNome('e', x.conta)} → ${ctNome('p', x.contaPes)}` : x.tipo === 'aporte' ? ` · ${ctNome('p', x.contaPes)} → ${ctNome('e', x.conta)}` : '';
     return { cat: 'caixa', cliente: '', cliId: null, ref: e.doc, valor: +x.valor || 0, sinal: x.tipo === 'transf' ? 0 : (ent ? 1 : -1) * (op === 'delete' ? -1 : op === 'update' ? 0 : 1), titulo: `${HTIPC[x.tipo] || 'Movimento de caixa'} de ${R$(x.valor)}${rota}${x.desc ? ' · ' + x.desc : ''}${suf}` }; }
   if (c === 'pes_lanc') {
-    const lab = (x.tipo === 'compra' ? `Compra no crédito ${x.cartao || ''}${+x.n > 1 ? ' em ' + x.n + '×' : ''}` : x.tipo === 'cartao' ? 'Fatura ' + (x.cartao || 'do cartão') + (x.pago && !(+x.valor) ? ' paga' : '') : (TIPOL[x.tipo] || 'Lançamento')) + (x.tipo === 'transf' ? ` (${ctNome('p', x.conta)} → ${ctNome('p', x.contaDest)})` : '');
+    const lab = (x.tipo === 'compra' ? `Compra no crédito ${x.cartao || ''}${+x.n > 1 ? ' em ' + x.n + '×' : ''}${x.mesRef1 ? ' → fatura ' + mesLab(x.mesRef1) : ''}` : x.tipo === 'cartao' ? 'Fatura ' + (x.cartao || 'do cartão') + (x.pago && !(+x.valor) ? ' paga' : '') : (TIPOL[x.tipo] || 'Lançamento')) + (x.tipo === 'transf' ? ` (${ctNome('p', x.conta)} → ${ctNome('p', x.contaDest)})` : '');
     const inv = x.inv ? S.inv.find(i => i.id === x.inv)?.nome : '';
     const t = op === 'update' && a && d && !a.pago && d.pago ? `${lab} de ${R$(x.valor)} marcada como paga` : `${lab}${inv ? ' · ' + inv : ''} de ${R$(x.valor)}${x.desc ? ' · ' + x.desc : ''}${suf}`;
     return { cat: 'pessoal', cliente: '', cliId: null, ref: e.doc, valor: +x.valor || 0, sinal: 0, titulo: t };
@@ -1470,7 +1482,7 @@ document.addEventListener('change', async e => {
   if (e.target.id !== 'impFile') return; const f = e.target.files?.[0]; e.target.value = ''; if (!f) return;
   try { abrirRestauracao(lerBackup(await f.text())); } catch (er) { toast(er.message === 'vazio' ? 'O arquivo não tem dados do app.' : 'Arquivo inválido. Escolha um backup .json do Tavares & Co.'); }
 });
-const APPV = '2026.11.25-1';
+const APPV = '2026.11.25-2';
 function dadosInfo() {
   const m = LDB.get('meta/app') || {}; const ub = m.ultimoBackup ? new Date(m.ultimoBackup) : null;
   return `<div class="cards"><div class="card"><span>Registros no aparelho</span><b>${LDB.size()}</b><em>${S.cli.length} clientes · ${S.emp.length} empréstimos · ${S.pag.length} pagamentos</em></div>
@@ -1683,7 +1695,9 @@ document.addEventListener('submit', async e => {
   } else if (f.id === 'fcompra') {
     const id = f.dataset.id, body = { tipo: 'compra', cartao: g('cartao'), data: g('data'), valor: num(g('valor')), n: Math.max(1, +g('n') || 1), mesRef1: g('mesRef1'), desc: g('desc').trim() };
     if (!(body.valor > 0)) return toast('Informe o valor.');
-    if (await W(() => id ? col('pes_lanc').doc(id).set({ ...body, criado: S.pl.find(x => x.id === id)?.criado || new Date().toISOString() }) : col('pes_lanc').add({ ...body, criado: new Date().toISOString() }), id ? 'Compra atualizada' : 'Compra lançada')) { close(); }
+    const dup = !id && S.pl.find(x => x.tipo === 'compra' && x.cartao === body.cartao && x.data === body.data && Math.abs((+x.valor || 0) - body.valor) < .005 && (x.desc || '') === body.desc);
+    if (dup && !confirm(`Já existe uma compra igual: ${body.cartao}, ${dBR(body.data)}, ${R$(body.valor)}${body.desc ? ' (' + body.desc + ')' : ''}. Lançar outra mesmo assim?`)) return;
+    if (await W(() => id ? col('pes_lanc').doc(id).set({ ...body, criado: S.pl.find(x => x.id === id)?.criado || new Date().toISOString() }) : col('pes_lanc').add({ ...body, criado: new Date().toISOString() }), (id ? 'Compra atualizada' : 'Compra lançada') + ' · fatura ' + body.cartao + ' ' + mesLab(body.mesRef1))) { render.reopen = null; sheetFatura(body.cartao, body.mesRef1); }
   } else if (f.id === 'ffatpag') {
     const [c, m] = f.dataset.k.split('|'), fa = fatura(c, m), data = g('data'), conta = g('conta'), forca = !!f.elements.forca?.checked;
     if (await W(async () => { if (fa.docs.length) { for (const x of fa.docs) await col('pes_lanc').doc(x.id).update({ pago: true, data, conta, contaForca: forca }); }
