@@ -538,6 +538,7 @@ function saldosCt(t, fim) { const o = {}; for (const k of ctList(t)) o[k.id] = +
 const saldosEmp = fim => saldosCt('e', fim);
 function caixaAte(fim) { return Object.values(saldosEmp(fim)).reduce((a, b) => a + b, 0); }
 function jurosDoPagamento(p) {
+  if (p.juros != null && p.juros !== '') return (+p.juros || 0) + (+p.mora || 0); // renovação: o valor pago é juros, não abate principal
   const L = S.emp.find(e => e.id === p.emp); if (!L) return +p.mora || 0; const r = R(L.id);
   const base = L.modalidade === 'rotativo' ? (+p.valor || 0) : ((+p.valor || 0) + (+p.amort || 0)) * (r.total > 0 ? r.jurosTotal / r.total : 0);
   return base + (+p.mora || 0);
@@ -956,6 +957,9 @@ function rnUpdate() {
   const go = $('#rnGo'); if (go) go.disabled = !ok;
 }
 function renegInfo(L, r) {
+  const novoR = L.situacao === 'substituido' && S.emp.find(e => e.id === L.renegPara);
+  if (novoR && novoR.reneg?.tipo === 'renovacao') return `<p class="note">Renovado em ${dBR(L.renegData)}: pago ${R$(novoR.reneg.entrada)}${novoR.reneg.mora ? ' + mora ' + R$(novoR.reneg.mora) : ''}; o saldo de ${R$(L.saldoTransferido)} virou o principal do contrato novo (vence ${dBR(novoR.primeiroVenc)}).</p><button class="btn" data-emp="${novoR.id}">Abrir contrato novo</button>`;
+  if (L.reneg?.tipo === 'renovacao') { const temPag = S.pag.some(p => p.emp === L.id), x = L.reneg; return `<div class="card" style="margin-top:10px"><span>Renovação de ${dBR(x.data)}</span><em>Saldo anterior ${R$(x.saldoAnterior)} · pago ${R$(x.entrada)} (juros ${R$(x.juros)}${x.amort ? ' + amortização ' + R$(x.amort) : ''}${x.capitalizado ? ' · juros não pagos somados ao principal ' + R$(x.capitalizado) : ''}${x.mora ? ' · mora ' + R$(x.mora) : ''}) · novo principal ${R$(L.valor)}</em>${temPag ? '<em>Para desfazer, exclua antes os pagamentos deste contrato.</em>' : `<button class="btn del" data-rnundo="${L.id}" style="margin-top:8px">Desfazer renovação</button>`}</div>`; }
   if (L.situacao === 'substituido') { const novo = S.emp.find(e => e.id === L.renegPara); return `<p class="note">Encerrado por renegociação em ${dBR(L.renegData)}: saldo de ${R$(L.saldoTransferido)} transferido para o contrato de ${novo ? R$(novo.parcela) + ' × ' + (novo.n || 1) : 'renegociação'}.</p>${novo ? `<button class="btn" data-emp="${novo.id}">Abrir contrato novo</button>` : ''}`; }
   if (L.reneg) { const temPag = S.pag.some(p => p.emp === L.id); return `<div class="card" style="margin-top:10px"><span>Renegociação de ${dBR(L.reneg.data)}</span><em>Saldo anterior ${R$(L.reneg.saldoAnterior)} · entrada ${R$(L.reneg.entrada)} · acréscimo ${R$(L.reneg.acrescimo)} · desconto ${R$(L.reneg.desconto)} · ${L.reneg.origem.length} contrato(s) encerrado(s)</em>${temPag ? '<em>Para desfazer, exclua antes os pagamentos deste contrato.</em>' : `<button class="btn del" data-rnundo="${L.id}" style="margin-top:8px">Desfazer renegociação</button>`}</div>`; }
   return '';
@@ -965,7 +969,7 @@ V.renegociar = () => {
   if (!S.rn.cli) {
     const list = S.cli.map(c => { const emps = S.emp.filter(L => L.cliente === c.id && R(L.id).saldo > 0.005); return { c, emps, saldo: emps.reduce((s, L) => s + R(L.id).saldo, 0), parado: emps.some(L => R(L.id).status === 'Parado'), atraso: emps.reduce((s, L) => s + R(L.id).atraso, 0) }; })
       .filter(x => x.emps.length && (!q || x.c.nome.toLowerCase().includes(q))).sort((a, b) => b.saldo - a.saldo);
-    const hist = S.emp.filter(L => L.reneg).sort((a, b) => b.reneg.data.localeCompare(a.reneg.data));
+    const hist = S.emp.filter(L => L.reneg && L.reneg.tipo !== 'renovacao').sort((a, b) => b.reneg.data.localeCompare(a.reneg.data));
     return `<div class="bar"><h2>Renegociar dívida</h2><input class="search" id="rnq" placeholder="Buscar cliente" value="${esc(S.rn.q)}"></div>
     <p class="note">Escolha o cliente. Os contratos selecionados são encerrados e o saldo vai inteiro para um contrato novo, com os valores e prazos que você definir.</p>
     <div class="list">${list.length ? list.map(x => `<div class="row" data-rncli="${x.c.id}"><div><div class="nm">${esc(x.c.nome)} ${x.parado ? '<span class="tag t-Parado">Congelado</span>' : ''}${x.atraso > 0 ? ' <span class="tag t-Ematraso">Em atraso</span>' : ''}</div><div class="meta">${x.emps.length} contrato${x.emps.length > 1 ? 's' : ''} em aberto${x.atraso > 0 ? ' · ' + R$(x.atraso) + ' vencido' : ''}</div></div><div class="val">${R$(x.saldo)}<div class="meta">saldo</div></div></div>`).join('') : '<div class="empty">Nenhum cliente com saldo.</div>'}</div>
@@ -1024,7 +1028,7 @@ async function rnUndo(id) {
     for (const oid of L.reneg.origem) { const o = S.emp.find(e => e.id === oid); if (o) await col('emprestimos').doc(oid).update({ situacao: o.sitAnterior || 'ativo', renegPara: null, renegData: null, saldoTransferido: null, sitAnterior: null }); }
     for (const pid of L.reneg.entradas || []) await col('pagamentos').doc(pid).delete();
     await col('emprestimos').doc(id).delete();
-  }, 'Renegociação desfeita · ' + cliNome(L.cliente)); if (ok) close();
+  }, (L.reneg.tipo === 'renovacao' ? 'Renovação desfeita · ' : 'Renegociação desfeita · ') + cliNome(L.cliente)); if (ok) close();
 }
 V.ajustes = () => {
   const c = cfg();
@@ -1060,11 +1064,11 @@ function sheetEmp(id) {
   const rows = r.sched.slice(0, r.rot ? Math.min(r.sched.length, r.vencidas + 4) : 400).map((d, k) => {
     const paid = Math.max(0, Math.min(r.parcela, credit - k * r.parcela)); const st = paid >= r.parcela - 0.1 ? 'Paga' : d < TODAY ? (paid > 0 ? 'Parcial' : 'Atrasada') : (+d === +TODAY ? 'Hoje' : (paid > 0 ? 'Parcial' : 'A vencer'));
     return `<tr><td>${k + 1}</td><td>${dBR(d)}</td><td class="n">${R$(r.parcela)}</td><td class="${st === 'Paga' ? 'pg' : st === 'Atrasada' ? 'at' : ''}">${st}${st === 'Parcial' ? ' (' + R$(paid) + ')' : ''}</td></tr>`; }).join('');
-  open(`<h2>${esc(cli?.nome || 'Cliente removido')}</h2><p class="note"><span class="tag t-${r.status.replace(/\s/g, '')}">${r.status}</span> · ${L.reneg ? 'contrato de renegociação de ' + dBR(L.reneg.data) : L.situacao === 'substituido' ? 'encerrado por renegociação' : L.importado ? 'importado da planilha antiga' : 'emprestado ' + R$(L.valor) + ' em ' + dBR(L.data)}</p>
+  open(`<h2>${esc(cli?.nome || 'Cliente removido')}</h2><p class="note"><span class="tag t-${r.status.replace(/\s/g, '')}">${r.status}</span> · ${L.reneg ? (L.reneg.tipo === 'renovacao' ? 'renovação de ' : 'contrato de renegociação de ') + dBR(L.reneg.data) : L.situacao === 'substituido' ? (S.emp.find(e => e.id === L.renegPara)?.reneg?.tipo === 'renovacao' ? 'encerrado por renovação' : 'encerrado por renegociação') : L.importado ? 'importado da planilha antiga' : 'emprestado ' + R$(L.valor) + ' em ' + dBR(L.data)}</p>
   <div class="sim"><small>Saldo devedor</small><div><b>${R$(r.saldo)}</b></div><div class="g">
    <div><span>${r.rot ? 'Juros/período' : 'Parcela'}</span>${R$(r.parcela)}</div><div><span>${r.rot ? 'Principal' : 'Total'}</span>${R$(r.rot ? r.principalAberto : r.total)}</div><div><span>Taxa</span>${pct(L.taxa)} a.m.</div>
    <div><span>Pago</span>${R$(r.pago + r.amort)}</div><div><span>Em atraso</span>${R$(r.atraso)}</div><div><span>Dias de atraso</span>${r.dias}</div></div></div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0">${r.quitado || r.status === 'Encerrado' ? '' : `<button class="btn gold" data-pay="${id}">Registrar pagamento</button>`}${wa(cli, r.atraso + r.hojeValor || r.parcela, r.prox || TODAY)}<button class="btn" data-edit-emp="${id}">Editar</button><button class="btn" data-hdoc="${id}">Histórico</button></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0">${r.quitado || r.status === 'Encerrado' ? '' : `<button class="btn gold" data-pay="${id}">Registrar pagamento</button>`}${wa(cli, r.atraso + r.hojeValor || r.parcela, r.prox || TODAY)}${podeRenovar(L, r) ? `<button class="btn" data-renovar="${id}">Renovar</button>` : ''}<button class="btn" data-edit-emp="${id}">Editar</button><button class="btn" data-hdoc="${id}">Histórico</button></div>
   ${L.situacao === 'substituido' ? '' : `<label>Situação<select data-sit="${id}">${[['ativo', 'Ativo'], ['renegociado', 'Renegociado'], ['parado', 'Parado (recuperação)'], ['perdido', 'Perdido (baixa)']].map(([v, l]) => `<option value="${v}"${(L.situacao || 'ativo') === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>`}
   ${L.obs ? `<p class="note">${esc(L.obs)}</p>` : ''}
   ${renegInfo(L, r)}
@@ -1128,6 +1132,38 @@ function payContaSync() { const f = $('#fpag'); if (!f || !f.elements.conta) ret
   f.elements.forma.addEventListener('change', () => { if (f.elements.conta.value.startsWith('e:')) f.elements.conta.value = 'e:' + ctPadraoE(f.elements.forma.value); info(); });
   f.elements.conta.addEventListener('change', () => avisoData(f, '#payData', 'credita')); f.elements.data.addEventListener('change', () => avisoData(f, '#payData', 'credita')); avisoData(f, '#payData', 'credita');
   f.elements.conta.addEventListener('change', info); info(); }
+const podeRenovar = (L, r) => !r.rot && !r.quitado && r.cobravel && (L.freq === 'unico' || (+L.n || 1) === 1) && r.saldo > 0;
+function renCalc(L, r, X) { // renovação: o saldo aberto (principal + juros do período) menos o que foi pago vira o principal do contrato novo
+  const Sd = r2(r.saldo), Pa = r2(r.principalAberto), J = r2(Sd - Pa), juros = r2(Math.min(X, J)), amort = r2(Math.max(0, X - J)), cap = r2(Math.max(0, J - X));
+  return { Sd, Pa, J, juros, amort, cap, novo: r2(Sd - X) }; }
+function sheetRenovar(id) {
+  const L = S.emp.find(e => e.id === id), r = R(id), cli = cliById(L.cliente), x0 = renCalc(L, r, 0);
+  const venc = r.prox || P(L.primeiroVenc), nv = ISO(addM(venc, 1));
+  open(`<h2>Renovar contrato</h2><p class="note">${esc(cli?.nome || '')} · saldo ${R$(x0.Sd)} = principal ${R$(x0.Pa)} + juros ${R$(x0.J)} · venceu/vence ${dBR(venc)}${r.dias ? ' · ' + r.dias + ' dia' + (r.dias > 1 ? 's' : '') + ' de atraso' : ''}</p>
+  <form id="fren" class="stack" data-eid="${id}" data-base="${ISO(venc)}">
+   <div class="grid2"><label>Data do pagamento<input name="data" type="date" required value="${TISO}"></label>
+   <label>Forma<select name="forma">${['Pix', 'Dinheiro', 'Transferência', 'Cartão', 'Outro'].map(x => `<option>${x}</option>`).join('')}</select></label></div>
+   <label>Recebido em<select name="conta">${ctSel('e:' + ctPadraoE('Pix'), 'Pessoal (vai direto para você)')}</select></label><div class="note" id="renData"></div>
+   <label>Valor pago agora<input name="valor" type="number" step="0.01" min="0" inputmode="decimal" value="${x0.J.toFixed(2)}"></label>
+   <div class="chips"><button type="button" class="chip" data-renfill="${x0.J}">Só os juros: ${R$(x0.J)}</button>${[100, 200, 500].filter(v => x0.J + v < x0.Sd).map(v => `<button type="button" class="chip" data-renfill="${r2(x0.J + v)}">Juros + ${R0(v)}</button>`).join('')}</div>
+   <div class="grid2"><label>Mora / multa (opcional)<input name="mora" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0,00"></label>
+   <label>Taxa do novo prazo (% a.m.)<input name="taxa" type="number" step="0.01" min="0" inputmode="decimal" value="${r2((+L.taxa || 0) * 100)}"></label></div>
+   <label>Novo vencimento<input name="venc" type="date" required value="${nv}"></label>
+   <div class="card" id="renInfo" style="margin-top:4px"></div>
+   <label>Observação<input name="obs"></label>
+   <button class="btn gold" type="submit">Confirmar renovação</button>
+  </form>`);
+  const f = $('#fren'), upd = () => { const X = num(f.elements.valor.value), x = renCalc(L, r, X), tx = num(f.elements.taxa.value) / 100, v = f.elements.venc.value;
+    const ok = v && v > ISO(venc), sim = ok ? simular(x.novo, tx, 'unico', 1, ISO(venc), v) : null, mo = num(f.elements.mora.value);
+    $('#renInfo').innerHTML = X >= x.Sd ? `<span>Pagamento cobre todo o saldo</span><em>Isso é quitação: use Registrar pagamento.</em>`
+      : `<span>Contrato novo</span><b>${sim ? R$(sim.parcela) : '—'}</b><em>${ok ? `vence ${dBR(v)} · principal ${R$(x.novo)} + juros ${R$(sim.juros)} (${pct(tx)} × ${sim.meses} ${sim.meses === 1 ? 'mês' : 'meses'})` : '<span class="warn-txt">O novo vencimento precisa ser depois de ' + dBR(venc) + '.</span>'}</em>
+       <em>Hoje: ${R$(X + mo)} = juros ${R$(x.juros)}${x.amort ? ' + amortização ' + R$(x.amort) : ''}${mo ? ' + mora ' + R$(mo) : ''}${x.cap ? `</em><em class="warn-txt">Pago menos que os juros: ${R$(x.cap)} de juros não pagos somam ao principal.` : ''}</em>${v && v <= TISO ? '<em class="warn-txt">O novo vencimento já passou.</em>' : ''}`;
+    f.querySelector('[type=submit]').disabled = !ok || X >= x.Sd; };
+  for (const n of ['valor', 'mora', 'taxa', 'venc']) { f.elements[n].addEventListener('input', upd); f.elements[n].addEventListener('change', upd); }
+  f.elements.forma.addEventListener('change', () => { if (f.elements.conta.value.startsWith('e:')) f.elements.conta.value = 'e:' + ctPadraoE(f.elements.forma.value); });
+  const av = () => avisoData(f, '#renData', 'credita'); f.elements.conta.addEventListener('change', av); f.elements.data.addEventListener('change', av); av(); upd();
+  sheetRenovar.upd = upd;
+}
 function sheetPay(id) {
   const L = S.emp.find(e => e.id === id), r = R(id), cli = cliById(L.cliente);
   const due = r2(r.atraso + r.hojeValor) || r.parcela;
@@ -1269,11 +1305,11 @@ const HCAT = { tudo: 'Tudo', receb: 'Recebimentos', emp: 'Empréstimos', reneg: 
 const HSIT = { ativo: 'Ativo', renegociado: 'Renegociado', parado: 'Parado', perdido: 'Perdido', substituido: 'Encerrado (renegociado)' };
 const HTIPC = { aporte: 'Aporte do sócio', retirada: 'Retirada do sócio', despesa: 'Despesa', transf: 'Transferência entre contas', 'ajuste+': 'Ajuste (+)', 'ajuste-': 'Ajuste (−)' };
 const HLBL = { cliente: 'Cliente', valor: 'Valor', parcela: 'Parcela', n: 'Nº de parcelas', freq: 'Frequência', modalidade: 'Modalidade', data: 'Data', primeiroVenc: '1º vencimento', taxa: 'Taxa', situacao: 'Situação', obs: 'Observação',
-  nome: 'Nome', tel: 'Telefone', cpf: 'CPF', end: 'Endereço', indic: 'Indicação', vip: 'VIP', sit: 'Situação', mora: 'Mora', amort: 'Amortização', forma: 'Forma', emp: 'Contrato', tipo: 'Tipo', desc: 'Descrição',
+  nome: 'Nome', tel: 'Telefone', cpf: 'CPF', end: 'Endereço', indic: 'Indicação', vip: 'VIP', sit: 'Situação', mora: 'Mora', amort: 'Amortização', juros: 'Juros', forma: 'Forma', emp: 'Contrato', tipo: 'Tipo', desc: 'Descrição',
   cartao: 'Cartão', pago: 'Pago', mesRef: 'Mês de referência', inv: 'Investimento', inst: 'Instituição', meta: 'Meta mensal', saldoBase: 'Saldo base', dataBase: 'Data base', capitalTotal: 'Capital total',
   saldoInicial: 'Saldo inicial', dataSaldo: 'Data do saldo', salario: 'Salário', taxaVip: 'Taxa VIP', teto: 'Teto da mora', tolerancia: 'Tolerância', limInad: 'Dias até inadimplente', mes: 'Mês', outros: 'Outros ativos', conta: 'Conta', contaDest: 'Para a conta', contaPes: 'Conta pessoal', contas: 'Contas', destino: 'Destino', origem: 'Origem do dinheiro', contaForca: 'Mexer no saldo mesmo com data anterior', mesRef1: 'Primeira fatura', cartoes: 'Cartões' };
 const HIGN = new Set(['criado', 'atualizado', 'importado', 'sitAnterior', 'renegPara', 'renegData', 'saldoTransferido', 'reneg', 'feriados', 'origem', 'detalhe']);
-const HMONEY = new Set(['valor', 'parcela', 'amort', 'meta', 'saldoBase', 'capitalTotal', 'saldoInicial', 'salario', 'teto', 'outros']);
+const HMONEY = new Set(['valor', 'parcela', 'amort', 'juros', 'meta', 'saldoBase', 'capitalTotal', 'saldoInicial', 'salario', 'teto', 'outros']);
 function hFmt(c, k, v) {
   if (v === null || v === undefined || v === '') return '—';
   if (typeof v === 'boolean') return v ? 'Sim' : 'Não';
@@ -1310,9 +1346,9 @@ function hDesc(e) {
   }
   if (c === 'emprestimos') {
     const rn = !!(x.reneg || (e.acao && /renegocia/i.test(e.acao)) || d?.situacao === 'substituido' || a?.situacao === 'substituido'); let t;
-    if (op === 'add') t = x.reneg ? `Contrato de renegociação: ${x.n}× ${R$(x.parcela)}` : `Novo empréstimo de ${R$(x.valor)} · ${x.n || 1}× ${+x.parcela ? R$(x.parcela) : 'parcela calculada'}${x.origem === 'pessoal' ? ' · saiu de ' + ctNome('p', x.contaPes) + ' (pessoal)' : x.conta ? ' · saiu de ' + ctNome('e', x.conta) : ''}`;
+    if (op === 'add') t = x.reneg ? (x.reneg.tipo === 'renovacao' ? `Renovação: novo principal ${R$(x.valor)} · ${R$(x.parcela)} vence ${dBR(x.primeiroVenc)}` : `Contrato de renegociação: ${x.n}× ${R$(x.parcela)}`) : `Novo empréstimo de ${R$(x.valor)} · ${x.n || 1}× ${+x.parcela ? R$(x.parcela) : 'parcela calculada'}${x.origem === 'pessoal' ? ' · saiu de ' + ctNome('p', x.contaPes) + ' (pessoal)' : x.conta ? ' · saiu de ' + ctNome('e', x.conta) : ''}`;
     else if (op === 'delete') t = `Empréstimo excluído · ${x.n || 1}× ${R$(x.parcela)}`;
-    else if (d?.situacao === 'substituido' && a?.situacao !== 'substituido') t = `Contrato encerrado por renegociação · saldo de ${R$(d.saldoTransferido)} transferido`;
+    else if (d?.situacao === 'substituido' && a?.situacao !== 'substituido') t = /renova/i.test(e.acao || '') ? `Contrato renovado · saldo de ${R$(d.saldoTransferido)} virou o novo principal` : `Contrato encerrado por renegociação · saldo de ${R$(d.saldoTransferido)} transferido`;
     else if (a?.situacao === 'substituido' && d?.situacao !== 'substituido') t = 'Contrato restaurado (renegociação desfeita)';
     else if ((a?.situacao || 'ativo') !== (d?.situacao || 'ativo')) t = `Situação: ${HSIT[a?.situacao || 'ativo']} → ${HSIT[d?.situacao || 'ativo']}`;
     else t = 'Empréstimo alterado: ' + hMud(e).map(m => HLBL[m.k] || m.k).join(', ');
@@ -1482,7 +1518,7 @@ document.addEventListener('change', async e => {
   if (e.target.id !== 'impFile') return; const f = e.target.files?.[0]; e.target.value = ''; if (!f) return;
   try { abrirRestauracao(lerBackup(await f.text())); } catch (er) { toast(er.message === 'vazio' ? 'O arquivo não tem dados do app.' : 'Arquivo inválido. Escolha um backup .json do Tavares & Co.'); }
 });
-const APPV = '2026.11.25-2';
+const APPV = '2026.11.26-1';
 function dadosInfo() {
   const m = LDB.get('meta/app') || {}; const ub = m.ultimoBackup ? new Date(m.ultimoBackup) : null;
   return `<div class="cards"><div class="card"><span>Registros no aparelho</span><b>${LDB.size()}</b><em>${S.cli.length} clientes · ${S.emp.length} empréstimos · ${S.pag.length} pagamentos</em></div>
@@ -1548,12 +1584,14 @@ const num = v => v === '' || v == null ? 0 : +v;
 
 document.addEventListener('click', async e => {
   if (e.target.closest('a.wa')) return;
-  const t = e.target.closest('[data-close],[data-htab],[data-filt],[data-new-emp],[data-new-cli],[data-new-mov],[data-pay],[data-emp],[data-cli],[data-mov],[data-edit-emp],[data-del-pag],[data-del-emp],[data-del-cli],[data-del-mov],[data-fill],#bkp,#bkpc,#calcMora,[data-new-fec],[data-fec],[data-del-fec],[data-outros],[data-pnew],[data-pl],[data-del-pl],[data-inv],[data-new-inv],[data-del-inv],[data-pcfg],[data-pmes],[data-paporte],[data-rncli],[data-rnsel],[data-rnclear],#rnCalc,#rnGo,[data-rnundo],[data-rntaxa],[data-hcat],[data-hist],[data-hdoc],[data-hcli],[data-hclear],#hcsv,#hcsvc,[data-pmesgo],[data-transf],[data-ctedit],[data-addct],[data-rmct],[data-ctmov],[data-go],[data-presgate],[data-rsgtudo],[data-compra],[data-fat],[data-fatdespagar],[data-addcart],[data-rmcart],[data-restore-ok],[data-zero]');
+  const t = e.target.closest('[data-close],[data-htab],[data-filt],[data-new-emp],[data-new-cli],[data-new-mov],[data-pay],[data-emp],[data-cli],[data-mov],[data-edit-emp],[data-del-pag],[data-del-emp],[data-del-cli],[data-del-mov],[data-fill],#bkp,#bkpc,#calcMora,[data-new-fec],[data-fec],[data-del-fec],[data-outros],[data-pnew],[data-pl],[data-del-pl],[data-inv],[data-new-inv],[data-del-inv],[data-pcfg],[data-pmes],[data-paporte],[data-rncli],[data-rnsel],[data-rnclear],#rnCalc,#rnGo,[data-rnundo],[data-rntaxa],[data-hcat],[data-hist],[data-hdoc],[data-hcli],[data-hclear],#hcsv,#hcsvc,[data-pmesgo],[data-transf],[data-ctedit],[data-addct],[data-rmct],[data-ctmov],[data-go],[data-presgate],[data-rsgtudo],[data-compra],[data-fat],[data-fatdespagar],[data-addcart],[data-rmcart],[data-renovar],[data-renfill],[data-restore-ok],[data-zero]');
   if (e.target === $('#ov')) { close(); render.reopen = null; return; }
   if (!t) return; const d = t.dataset;
   if (d.close !== undefined) { close(); render.reopen = null; }
   else if (d.htab) { S.hojeTab = d.htab; render(); }
   else if (d.filt) { S.filtro = d.filt; render(); }
+  else if (d.renovar) { e.stopPropagation(); render.reopen = null; sheetRenovar(d.renovar); }
+  else if (d.renfill) { $('#fren').elements.valor.value = (+d.renfill).toFixed(2); sheetRenovar.upd?.(); }
   else if (d.fill) { $('#fpag').elements.valor.value = d.fill; }
   else if (d.rncli) { S.rn = { cli: d.rncli, sel: null, q: S.rn.q, f: {} }; render(); scrollTo({ top: 0, behavior: 'smooth' }); }
   else if (d.rnclear !== undefined) { S.rn = { cli: null, sel: null, q: S.rn.q, f: {} }; render(); }
@@ -1654,6 +1692,20 @@ document.addEventListener('submit', async e => {
     if (!(body.valor > 0)) return toast('Informe o valor.');
     const id = f.dataset.id;
     if (await W(() => id ? col('emprestimos').doc(id).update(body) : col('emprestimos').add({ ...body, situacao: 'ativo', criado: new Date().toISOString() }), id ? 'Empréstimo atualizado' : 'Empréstimo registrado')) { close(); render.reopen = null; }
+  } else if (f.id === 'fren') {
+    const L = S.emp.find(e => e.id === f.dataset.eid), r = R(L.id), X = num(g('valor')), mora = num(g('mora')), x = renCalc(L, r, X), taxa = num(g('taxa')) / 100, venc = g('venc'), base = f.dataset.base, data = g('data');
+    if (!(venc > base) || X >= x.Sd) return toast('Confira o valor e o novo vencimento.');
+    const sim = simular(x.novo, taxa, 'unico', 1, base, venc), [lado, cid] = (g('conta') || 'e:' + CT_E()[0].id).split(/:(.*)/), forca = !!f.elements.forca?.checked;
+    const obs = g('obs').trim(); let novoId = null;
+    const ok = await W(async () => {
+      const entradas = []; if (X + mora > 0) { const pr = await col('pagamentos').add({ emp: L.id, data, valor: X, juros: x.juros, mora, amort: 0, forma: g('forma'), ...(lado === 'p' ? { contaPes: cid, destino: 'pessoal' } : { conta: cid }), contaForca: forca, obs: 'Renovação' + (obs ? ' · ' + obs : ''), criado: new Date().toISOString() }); entradas.push(pr.id); }
+      const ref = await col('emprestimos').add({ cliente: L.cliente, valor: x.novo, data: base, modalidade: 'parcelado', freq: 'unico', n: 1, primeiroVenc: venc, taxa, parcela: sim.parcela, situacao: 'ativo',
+        obs: `Renovação do contrato de ${R$(x.Sd)} (vencimento ${dBR(base)}).${obs ? ' ' + obs : ''}`, criado: new Date().toISOString(),
+        reneg: { tipo: 'renovacao', data, origem: [L.id], entradas, saldoAnterior: x.Sd, entrada: X, juros: x.juros, amort: x.amort, capitalizado: x.cap, mora, acrescimo: 0, desconto: 0 } });
+      novoId = ref.id;
+      await col('emprestimos').doc(L.id).update({ situacao: 'substituido', sitAnterior: L.situacao || 'ativo', renegPara: ref.id, renegData: data, saldoTransferido: x.novo });
+    }, 'Renovação registrada · ' + cliNome(L.cliente));
+    if (ok) { render.reopen = null; setTimeout(() => novoId && sheetEmp(novoId), 60); }
   } else if (f.id === 'fpag') {
     const body = { emp: f.dataset.eid, data: g('data'), valor: num(g('valor')), mora: num(g('mora')), amort: num(g('amort')), forma: g('forma'), ...(() => { const [lado, id] = (g('conta') || 'e:' + CT_E()[0].id).split(/:(.*)/); return lado === 'p' ? { contaPes: id, destino: 'pessoal' } : { conta: id }; })(), contaForca: !!f.elements.forca?.checked, obs: g('obs').trim(), criado: new Date().toISOString() };
     if (body.valor + body.mora + body.amort <= 0) return toast('Informe um valor.');
