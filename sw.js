@@ -1,5 +1,5 @@
 /* Tavares & Co. — guarda o app para abrir sem internet. Não toca nos dados (eles ficam no IndexedDB). */
-const VERSAO = 'tavares-2026.11.26-1';
+const VERSAO = 'tavares-2026.11.27-1';
 const ARQUIVOS = ['index.html', 'manifest.webmanifest', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png',
   'fonts/montserrat-latin-400-normal.woff2', 'fonts/montserrat-latin-500-normal.woff2', 'fonts/montserrat-latin-600-normal.woff2', 'fonts/montserrat-latin-700-normal.woff2',
   'fonts/playfair-display-latin-500-normal.woff2', 'fonts/playfair-display-latin-600-normal.woff2', 'fonts/playfair-display-latin-700-normal.woff2'];

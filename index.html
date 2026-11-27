@@ -150,7 +150,8 @@ label{display:block;font-size:13px;font-weight:600;color:var(--mut)}label>input,
 .tag{display:inline-block;font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap;vertical-align:middle}
 .t-Emdia{background:light-dark(#E3F2E8,#12301F);color:var(--ok)}.t-Vencehoje{background:light-dark(#FBF0D9,#3A2C0C);color:var(--warn)}
 .t-Ematraso{background:light-dark(#FCE6DA,#3B1D10);color:var(--late)}.t-Inadimplente{background:light-dark(#F9DDE5,#3A0F1C);color:var(--bad)}
-.t-Parado{background:light-dark(#ECE8F7,#231D3D);color:var(--park)}.t-Quitado,.t-Perdido,.t-Encerrado{background:var(--sf2);color:var(--mut)}.t-Renegociado{background:light-dark(#E1EBF6,#14263D);color:light-dark(#1F4E79,#8DB8E8)}
+.t-Parado{background:light-dark(#ECE8F7,#231D3D);color:var(--park)}.t-Quitado,.t-Perdido,.t-Encerrado{background:var(--sf2);color:var(--mut)}.t-Atualizado{background:light-dark(#F7E4EC,#3A1428);color:light-dark(#8A1F4E,#F2A7C6)}
+.t-Renegociado{background:light-dark(#E1EBF6,#14263D);color:light-dark(#1F4E79,#8DB8E8)}
 .sA{color:var(--ok)}.sB{color:var(--warn)}.sC{color:var(--late)}.sD{color:var(--bad)}
 .empty{padding:28px 16px;text-align:center;color:var(--mut)}
 .sec{margin:24px 0 10px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px}.sec h3{font-family:Montserrat,system-ui,sans-serif;font-size:11.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:10px;flex:1 1 auto;white-space:nowrap}.sec h3::after{content:'';flex:1;height:1px;background:var(--line);min-width:20px}.sec span{font-size:12px;color:var(--mut);text-align:right;flex:0 1 auto}.sec .mnav b{font-size:16px}
@@ -419,6 +420,13 @@ function calc(L, pays, cfg, today) {
     R.total = r2(R.parcela * n); R.jurosTotal = r2(R.total - (+L.valor || 0));
     R.sched = schedule(L, hol, n);
   }
+  /* atualização de débito: as parcelas em atraso passam a vencer na data da atualização; a mora lançada vira débito à parte */
+  const atus = Array.isArray(L.atu) ? L.atu : [], ult = atus[atus.length - 1] || null;
+  R.atuN = atus.length; R.atuDias = atus.reduce((s, a) => s + (+a.dias || 0), 0); R.ultAtu = ult;
+  R.lancTotal = r2(atus.reduce((s, a) => s + (+a.mora || 0), 0));
+  let lancPago = 0; for (const p of pays) lancPago += +p.moraLanc || 0;
+  R.lanc = r2(Math.max(0, R.lancTotal - lancPago)); if (R.lanc < 0.01) R.lanc = 0;
+  if (ult) { const dU = P(ult.data); for (let k = +ult.q0 || 0; k < Math.min(+ult.k || 0, R.sched.length); k++) if (R.sched[k] < dU) R.sched[k] = dU; }
   const credit = rot ? pago : pago + amort;
   const maxK = rot ? R.sched.length : R.n;
   const tol = Math.max(0.1, R.parcela * 0.002);
@@ -431,8 +439,9 @@ function calc(L, pays, cfg, today) {
   R.saldo = rot ? r2(R.principalAberto + R.atraso) : r2(Math.max(0, R.total - credit));
   if (!rot) R.principalAberto = R.total > 0 ? r2((+L.valor) * R.saldo / R.total) : 0;
   R.jurosRealizado = rot ? pago : (R.total > 0 ? r2(credit * R.jurosTotal / R.total) : 0);
-  const quitado = rot ? R.principalAberto <= 0.005 : R.saldo < tol;
-  R.prox = quitado ? null : (R.sched[R.quitadas] || null);
+  const quitado = (rot ? R.principalAberto <= 0.005 : R.saldo < tol) && !(R.lanc > 0);
+  R.saldo = r2(R.saldo + R.lanc);
+  R.prox = quitado ? null : (R.sched[R.quitadas] || (R.lanc > 0 && ult ? P(ult.data) : null));
   R.dias = R.atraso > 0.005 && R.prox ? Math.max(0, diff(today, R.prox)) : 0;
   let mora = 0;
   if (R.atraso > 0.005) for (let k = R.quitadas; k < R.vencidas; k++) {
@@ -440,10 +449,15 @@ function calc(L, pays, cfg, today) {
     const d = Math.max(0, diff(today, R.sched[k]) - (cfg.tolerancia || 0));
     let m = owed * cfg.mora * d; if (cfg.teto > 0) m = Math.min(m, cfg.teto * R.parcela); mora += m;
   }
+  if (R.lanc > 0 && ult) { // mora lançada não paga: volta a atrasar no dia seguinte à atualização e também gera mora
+    const dl = diff(today, P(ult.data));
+    if (dl > 0) { R.atraso = r2(R.atraso + R.lanc); R.dias = Math.max(R.dias, dl); const dd = Math.max(0, dl - (cfg.tolerancia || 0)); let m = R.lanc * cfg.mora * dd; if (cfg.teto > 0) m = Math.min(m, cfg.teto * R.lanc); mora += m; }
+  }
   R.mora = r2(mora);
   R.parcelasAtraso = R.atraso > 0.005 ? R.vencidas - R.quitadas : 0;
   R.hojeValor = 0;
-  if (!quitado && R.hojeK > 0 && R.hojeK > R.quitadas) R.hojeValor = r2(R.hojeK === R.quitadas + 1 ? R.parcela - parcial : R.parcela);
+  if (!quitado) { const lim = rot ? R.sched.length : R.n; let h = 0; for (let k = R.quitadas; k < lim; k++) { const d = R.sched[k]; if (!d || d > today) break; if (+d === +today) h += R.parcela - (k === R.quitadas ? parcial : 0); } R.hojeValor = r2(h); }
+  if (!quitado && R.lanc > 0 && ult && +P(ult.data) === +today) R.hojeValor = r2(R.hojeValor + R.lanc);
   const sit = L.situacao || 'ativo';
   if (sit === 'parado' || sit === 'perdido') { R.mora = 0; R.dias = 0; R.hojeValor = 0; }
   if (sit === 'parado' || sit === 'perdido') R.status = sit === 'parado' ? 'Parado' : 'Perdido';
@@ -571,13 +585,14 @@ const wa = (cli, valor, venc) => {
   const msg = `Olá, ${(cli.nome || '').split(' ')[0]}! Aqui é da Tavares & Co. Lembrete do seu pagamento de ${R$(valor)} com vencimento em ${dBR(venc)}. Qualquer dúvida, é só responder.`;
   return `<a class="wa" href="https://wa.me/55${d}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">WhatsApp</a>`;
 };
+const atuTag = r => r.atuN ? `<span class="tag t-Atualizado">Atualizado ${r.atuN}× · ${r.atuDias + (r.dias || 0)} dias de atraso acumulados</span>` : '';
 function itemRow(it, kind) {
   const { L, r, cli } = it; const nm = esc(cli?.nome || 'Cliente removido');
-  const meta = kind === 'atraso' ? `${r.dias} dia${r.dias > 1 ? 's' : ''} de atraso · ${r.parcelasAtraso} parcela${r.parcelasAtraso > 1 ? 's' : ''} · sem mora aplicada`
-    : kind === 'hoje' ? `Parcela ${L.modalidade === 'rotativo' ? 'de juros' : (r.quitadas + 1) + '/' + r.n} · vence hoje` : `Vence ${dBR(r.prox)} · parcela ${R$(r.parcela)}`;
+  const meta = (kind === 'atraso' ? `${r.dias} dia${r.dias > 1 ? 's' : ''} de atraso${r.parcelasAtraso ? ` · ${r.parcelasAtraso} parcela${r.parcelasAtraso > 1 ? 's' : ''}` : ''} · ${r.lanc > 0 ? 'inclui ' + R$(r.lanc) + ' de mora lançada' : 'sem mora aplicada'}`
+    : kind === 'hoje' ? (r.ultAtu && r.ultAtu.data === TISO ? `Débito atualizado hoje · inclui ${R$(r.lanc)} de mora lançada` : `Parcela ${L.modalidade === 'rotativo' ? 'de juros' : (r.quitadas + 1) + '/' + r.n} · vence hoje`) : `Vence ${dBR(r.prox)} · parcela ${R$(r.parcela)}`) + (r.atuN ? `<div style="margin-top:4px">${atuTag(r)}</div>` : '');
   return `<div class="row" data-emp="${L.id}"><div><div class="nm">${nm} ${cli?.vip ? '<span class="tag t-Vencehoje">VIP</span>' : ''}</div><div class="meta">${meta}</div></div>
   <div class="val">${R$(it.total)}${kind === 'atraso' ? '<div class="meta">em atraso</div>' : ''}</div>
-  <div class="act">${kind !== 'prox' ? `<button class="btn gold" data-pay="${L.id}">Receber</button>` : ''}${wa(cli, it.total, kind === 'atraso' ? r.prox : (r.prox || TODAY))}</div></div>`;
+  <div class="act">${kind !== 'prox' ? `<button class="btn gold" data-pay="${L.id}">Receber</button>` : ''}${kind === 'atraso' ? `<button class="btn" data-atu="${L.id}">Atualizar débito</button>` : ''}${wa(cli, it.total, kind === 'atraso' ? r.prox : (r.prox || TODAY))}</div></div>`;
 }
 const V = {};
 V.hoje = () => {
@@ -587,7 +602,7 @@ V.hoje = () => {
   return `<div class="bar"><h2>Cobrança do dia</h2><button class="btn pri" data-new-emp>+ Novo empréstimo</button></div>
   <div class="chips" style="margin-bottom:12px">${Object.keys(lab).map(k => `<button class="chip ${k === t ? 'on' : ''}" data-htab="${k}">${lab[k]} (${n[k]})</button>`).join('')}</div>
   <div class="list">${items.length ? items.map(i => itemRow(i, t)).join('') : `<div class="empty">${t === 'atraso' ? 'Nenhum atraso. Carteira em dia.' : t === 'hoje' ? 'Nada vence hoje.' : 'Nenhum vencimento nos próximos 7 dias.'}</div>`}</div>
-  ${t === 'atraso' && items.length ? `<p class="note">A mora não é aplicada automaticamente. Ao receber, informe os dias de atraso combinados e toque em Calcular mora (${pct(cfg().mora)} ao dia${cfg().teto > 0 ? `, limitada a ${cfg().teto}× o valor` : ''}). Atraso avisado e sem acréscimo: deixe em zero.</p>` : ''}`;
+  ${t === 'atraso' && items.length ? `<p class="note"><b>Atualizar débito</b> soma a mora (% ao dia ou R$ por dia) ao valor em atraso e muda o vencimento para hoje: o cliente sai do atraso e, se não pagar, volta amanhã com a mora correndo sobre o valor atualizado. A mora não é aplicada automaticamente. Ao receber, informe os dias de atraso combinados e toque em Calcular mora (${pct(cfg().mora)} ao dia${cfg().teto > 0 ? `, limitada a ${cfg().teto}× o valor` : ''}). Atraso avisado e sem acréscimo: deixe em zero.</p>` : ''}`;
 };
 const FILT = { encerrados: r => r.status === 'Encerrado', ativos: r => r.cobravel, atraso: r => r.status === 'Em atraso' || r.status === 'Inadimplente', parados: r => r.status === 'Parado' || r.status === 'Perdido', quitados: r => r.status === 'Quitado', todos: () => true };
 V.emprestimos = () => {
@@ -599,7 +614,7 @@ V.emprestimos = () => {
   return `<div class="bar"><h2>Empréstimos</h2><input class="search" id="q" placeholder="Buscar cliente" value="${esc(S.q)}"><button class="btn pri" data-new-emp>+ Novo</button></div>
   <div class="chips" style="margin-bottom:12px">${Object.keys(lab).map(k => `<button class="chip ${k === S.filtro ? 'on' : ''}" data-filt="${k}">${lab[k]}</button>`).join('')}</div>
   <div class="sec"><span>${list.length} empréstimo${list.length === 1 ? '' : 's'}</span><span>Saldo: <b>${R$(tot)}</b></span></div>
-  <div class="list">${list.length ? list.map(L => { const r = R(L.id); return `<div class="row" data-emp="${L.id}"><div><div class="nm">${esc(cliNome(L.cliente))} <span class="tag t-${r.status.replace(/\s/g, '')}">${r.status}</span></div>
+  <div class="list">${list.length ? list.map(L => { const r = R(L.id); return `<div class="row" data-emp="${L.id}"><div><div class="nm">${esc(cliNome(L.cliente))} <span class="tag t-${r.status.replace(/\s/g, '')}">${r.status}</span> ${r.atuN ? `<span class="tag t-Atualizado">Atualizado ${r.atuN}×</span>` : ''}</div>
   <div class="meta">${R0(L.valor)}${L.importado ? ' (importado)' : ''} · ${L.modalidade === 'rotativo' ? 'rotativo ' + pct(L.taxa) + ' · juros ' + R$(r.parcela) : r.n + '× ' + R$(r.parcela)} · ${FREQ[L.freq]?.l || ''}${r.prox ? ' · próx. ' + dBR(r.prox) : ''}</div></div>
   <div class="val">${R$(r.saldo)}<div class="meta">saldo</div></div></div>`; }).join('') : '<div class="empty">Nenhum empréstimo neste filtro.</div>'}</div>`;
 };
@@ -1064,14 +1079,15 @@ function sheetEmp(id) {
   const rows = r.sched.slice(0, r.rot ? Math.min(r.sched.length, r.vencidas + 4) : 400).map((d, k) => {
     const paid = Math.max(0, Math.min(r.parcela, credit - k * r.parcela)); const st = paid >= r.parcela - 0.1 ? 'Paga' : d < TODAY ? (paid > 0 ? 'Parcial' : 'Atrasada') : (+d === +TODAY ? 'Hoje' : (paid > 0 ? 'Parcial' : 'A vencer'));
     return `<tr><td>${k + 1}</td><td>${dBR(d)}</td><td class="n">${R$(r.parcela)}</td><td class="${st === 'Paga' ? 'pg' : st === 'Atrasada' ? 'at' : ''}">${st}${st === 'Parcial' ? ' (' + R$(paid) + ')' : ''}</td></tr>`; }).join('');
-  open(`<h2>${esc(cli?.nome || 'Cliente removido')}</h2><p class="note"><span class="tag t-${r.status.replace(/\s/g, '')}">${r.status}</span> · ${L.reneg ? (L.reneg.tipo === 'renovacao' ? 'renovação de ' : 'contrato de renegociação de ') + dBR(L.reneg.data) : L.situacao === 'substituido' ? (S.emp.find(e => e.id === L.renegPara)?.reneg?.tipo === 'renovacao' ? 'encerrado por renovação' : 'encerrado por renegociação') : L.importado ? 'importado da planilha antiga' : 'emprestado ' + R$(L.valor) + ' em ' + dBR(L.data)}</p>
+  open(`<h2>${esc(cli?.nome || 'Cliente removido')}</h2><p class="note"><span class="tag t-${r.status.replace(/\s/g, '')}">${r.status}</span> ${atuTag(r)} · ${L.reneg ? (L.reneg.tipo === 'renovacao' ? 'renovação de ' : 'contrato de renegociação de ') + dBR(L.reneg.data) : L.situacao === 'substituido' ? (S.emp.find(e => e.id === L.renegPara)?.reneg?.tipo === 'renovacao' ? 'encerrado por renovação' : 'encerrado por renegociação') : L.importado ? 'importado da planilha antiga' : 'emprestado ' + R$(L.valor) + ' em ' + dBR(L.data)}</p>
   <div class="sim"><small>Saldo devedor</small><div><b>${R$(r.saldo)}</b></div><div class="g">
    <div><span>${r.rot ? 'Juros/período' : 'Parcela'}</span>${R$(r.parcela)}</div><div><span>${r.rot ? 'Principal' : 'Total'}</span>${R$(r.rot ? r.principalAberto : r.total)}</div><div><span>Taxa</span>${pct(L.taxa)} a.m.</div>
    <div><span>Pago</span>${R$(r.pago + r.amort)}</div><div><span>Em atraso</span>${R$(r.atraso)}</div><div><span>Dias de atraso</span>${r.dias}</div></div></div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0">${r.quitado || r.status === 'Encerrado' ? '' : `<button class="btn gold" data-pay="${id}">Registrar pagamento</button>`}${wa(cli, r.atraso + r.hojeValor || r.parcela, r.prox || TODAY)}${podeRenovar(L, r) ? `<button class="btn" data-renovar="${id}">Renovar</button>` : ''}<button class="btn" data-edit-emp="${id}">Editar</button><button class="btn" data-hdoc="${id}">Histórico</button></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0">${r.quitado || r.status === 'Encerrado' ? '' : `<button class="btn gold" data-pay="${id}">Registrar pagamento</button>`}${r.atraso > 0 && r.cobravel ? `<button class="btn" data-atu="${id}">Atualizar débito</button>` : ''}${wa(cli, r.atraso + r.hojeValor || r.parcela, r.prox || TODAY)}${podeRenovar(L, r) ? `<button class="btn" data-renovar="${id}">Renovar</button>` : ''}<button class="btn" data-edit-emp="${id}">Editar</button><button class="btn" data-hdoc="${id}">Histórico</button></div>
   ${L.situacao === 'substituido' ? '' : `<label>Situação<select data-sit="${id}">${[['ativo', 'Ativo'], ['renegociado', 'Renegociado'], ['parado', 'Parado (recuperação)'], ['perdido', 'Perdido (baixa)']].map(([v, l]) => `<option value="${v}"${(L.situacao || 'ativo') === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>`}
   ${L.obs ? `<p class="note">${esc(L.obs)}</p>` : ''}
   ${renegInfo(L, r)}
+  ${atuInfo(L, r)}
   <div class="sec"><h3>Pagamentos</h3><span>${pays.length}</span></div>
   <div class="list">${pays.length ? pays.map(p => `<div class="row" style="cursor:default"><div><div class="nm">${R$((+p.valor || 0) + (+p.amort || 0) + (+p.mora || 0))}</div><div class="meta">${dBR(p.data)} · ${esc(p.forma || '')}${+p.amort ? ' · amortização ' + R$(p.amort) : ''}${+p.mora ? ' · mora ' + R$(p.mora) : ''}${p.obs ? ' · ' + esc(p.obs) : ''}</div></div><div class="val"><button class="btn del" data-del-pag="${p.id}" style="min-height:36px;padding:6px 10px">Excluir</button></div></div>`).join('') : '<div class="empty">Nenhum pagamento ainda.</div>'}</div>
   <div class="sec"><h3>Cronograma</h3><span>${r.rot ? 'juros por período' : r.n + ' parcelas'}</span></div>
@@ -1164,21 +1180,61 @@ function sheetRenovar(id) {
   const av = () => avisoData(f, '#renData', 'credita'); f.elements.conta.addEventListener('change', av); f.elements.data.addEventListener('change', av); av(); upd();
   sheetRenovar.upd = upd;
 }
+function atuInfo(L, r) {
+  const a = Array.isArray(L.atu) ? L.atu : []; if (!a.length) return '';
+  return `<div class="sec"><h3>Atualizações de débito</h3><span>${a.length}× · ${r.atuDias} dia${r.atuDias === 1 ? '' : 's'} lançados</span></div>
+  <div class="list">${a.slice().reverse().map(x => `<div class="row" style="cursor:default"><div><div class="nm">${dBR(x.data)} · ${R$(x.base)} → ${R$(x.total)}</div><div class="meta">${x.dias} dia${x.dias === 1 ? '' : 's'} × ${x.modo === 'fixo' ? R$(x.porDia) + ' por dia' : pct(x.taxa) + ' ao dia'} = mora ${R$(x.mora)}${x.obs ? ' · ' + esc(x.obs) : ''}</div></div></div>`).join('')}</div>
+  <p class="note">Mora lançada em aberto: <b>${R$(r.lanc)}</b> de ${R$(r.lancTotal)} lançados.</p>
+  <button class="btn del" data-atuundo="${L.id}" style="margin-bottom:6px">Desfazer última atualização</button>`;
+}
+function atuCalc(f, base) {
+  const dias = Math.max(0, Math.floor(num(f.elements.dias.value))), modo = f.dataset.modo === 'fixo' ? 'fixo' : 'pct';
+  const taxa = num(f.elements.taxa.value) / 100, dia = num(f.elements.dia.value);
+  const mora = r2(modo === 'fixo' ? dia * dias : base * taxa * dias);
+  return { dias, modo, taxa, dia, mora, total: r2(base + mora) };
+}
+function sheetAtu(id) {
+  const L = S.emp.find(e => e.id === id), r = R(id), cli = cliById(L.cliente), c = cfg();
+  if (!(r.atraso > 0)) { toast('Este contrato não está em atraso.'); return; }
+  const modo = cli?.moraModo === 'fixo' ? 'fixo' : 'pct', taxa = cli?.moraTaxa != null ? +cli.moraTaxa : c.mora, dia = +cli?.moraDia || 0;
+  open(`<h2>Atualizar débito</h2><p class="note">${esc(cli?.nome || '')} · ${R$(r.atraso)} em atraso${r.lanc > 0 ? ` (inclui ${R$(r.lanc)} de mora já lançada)` : ''} · venceu ${dBR(r.prox)}${cli?.moraModo ? ' · condição padrão deste cliente carregada' : ''}</p>
+  <form id="fatu" class="stack" data-eid="${id}" data-modo="${modo}">
+   <label>Dias de atraso a cobrar<input name="dias" type="number" min="0" step="1" inputmode="numeric" value="${r.dias}"></label>
+   <p class="note" style="margin-top:-6px">Atraso real: ${r.dias} dia${r.dias === 1 ? '' : 's'}. Pode ajustar conforme o combinado com o cliente.</p>
+   <div class="chips"><button type="button" class="chip ${modo === 'pct' ? 'on' : ''}" data-atumodo="pct">% ao dia</button><button type="button" class="chip ${modo === 'fixo' ? 'on' : ''}" data-atumodo="fixo">R$ por dia</button></div>
+   <label id="atuTx"${modo === 'fixo' ? ' style="display:none"' : ''}>Mora ao dia (%)<input name="taxa" type="number" step="0.01" min="0" inputmode="decimal" value="${r2(taxa * 100)}"></label>
+   <label id="atuDia"${modo === 'pct' ? ' style="display:none"' : ''}>Valor da diária de atraso (R$)<input name="dia" type="number" step="0.01" min="0" inputmode="decimal" value="${dia ? dia.toFixed(2) : ''}" placeholder="0,00"></label>
+   <div class="card" id="atuInfo"></div>
+   <label class="check"><input type="checkbox" name="padrao"> Salvar esta condição como padrão de ${esc((cli?.nome || 'cliente').split(' ')[0])}</label>
+   <label>Observação<input name="obs" placeholder="opcional"></label>
+   <button class="btn gold" type="submit">Confirmar atualização</button>
+  </form>`);
+  const f = $('#fatu'), upd = () => { const x = atuCalc(f, r.atraso);
+    $('#atuTx').style.display = x.modo === 'pct' ? '' : 'none'; $('#atuDia').style.display = x.modo === 'fixo' ? '' : 'none';
+    f.querySelectorAll('[data-atumodo]').forEach(b => b.classList.toggle('on', b.dataset.atumodo === x.modo));
+    $('#atuInfo').innerHTML = `<span>Novo débito · vence hoje (${dBR(TISO)})</span><b>${R$(x.total)}</b>
+     <em>${R$(r.atraso)} em atraso + mora ${R$(x.mora)} (${x.dias} dia${x.dias === 1 ? '' : 's'} × ${x.modo === 'fixo' ? R$(x.dia) + ' por dia' : pct(x.taxa) + ' ao dia sobre ' + R$(r.atraso)})</em>
+     <em>Sai de "Em atraso". Se não pagar hoje, volta amanhã para o atraso com a mora correndo sobre ${R$(x.total)}.</em>`;
+    f.querySelector('[type=submit]').disabled = false; };
+  for (const n of ['dias', 'taxa', 'dia']) f.elements[n].addEventListener('input', upd);
+  sheetAtu.upd = upd; upd();
+}
 function sheetPay(id) {
   const L = S.emp.find(e => e.id === id), r = R(id), cli = cliById(L.cliente);
-  const due = r2(r.atraso + r.hojeValor) || r.parcela;
+  const due = r2(r.atraso + r.hojeValor - r.lanc) || (r.lanc > 0 ? 0 : r.parcela);
   open(`<h2>Registrar pagamento</h2><p class="note">${esc(cli?.nome || '')} · ${r.rot ? 'juros ' + R$(r.parcela) + '/período' : 'parcela ' + R$(r.parcela)} · saldo ${R$(r.saldo)}</p>
-  <form id="fpag" class="stack" data-eid="${id}">
+  ${r.lanc > 0 ? `<p class="note"><b>${R$(r.lanc)}</b> de mora lançada na atualização de ${dBR(r.ultAtu?.data)} já vem no campo de mora.</p>` : ''}
+  <form id="fpag" class="stack" data-eid="${id}" data-lanc="${r.lanc || 0}">
    <div class="grid2"><label>Data<input name="data" type="date" required value="${TISO}"></label>
    <label>Forma<select name="forma">${['Pix', 'Dinheiro', 'Transferência', 'Cartão', 'Outro'].map(x => `<option>${x}</option>`).join('')}</select></label></div>
    <label>Recebido em<select name="conta">${ctSel('e:' + ctPadraoE('Pix'), 'Pessoal (vai direto para você)')}</select></label>
    <p class="note" id="payDest" style="margin-top:-4px"></p><div class="note" id="payData"></div>
    <label>${r.rot ? 'Juros pagos' : 'Valor das parcelas'}<input name="valor" type="number" step="0.01" min="0" value="${due}"></label>
-   <div class="chips">${[['Devido', due], ['1 parcela', r.parcela], ['Quitar tudo', r.rot ? r.atraso : r.saldo]].filter(x => x[1] > 0).map(([l, v]) => `<button type="button" class="chip" data-fill="${v}">${l}: ${R$(v)}</button>`).join('')}</div>
+   <div class="chips">${[['Devido', due], ['1 parcela', r.parcela], ['Quitar tudo', r2((r.rot ? r.atraso : r.saldo) - r.lanc)]].filter(x => x[1] > 0).map(([l, v]) => `<button type="button" class="chip" data-fill="${v}">${l}: ${R$(v)}</button>`).join('')}</div>
    <div class="grid2"><label>Dias de atraso a cobrar<input name="dias" type="number" min="0" step="1" inputmode="numeric" placeholder="${r.dias ? 'atraso real: ' + r.dias + (r.dias > 1 ? ' dias' : ' dia') : '0'}"></label>
    <button type="button" class="btn" id="calcMora" style="align-self:end">Calcular mora</button></div>
    <p class="note" id="moraInfo">Mora não aplicada automaticamente. Informe os dias combinados com o cliente e toque em Calcular (${pct(cfg().mora)} ao dia sobre o valor recebido). Sem acréscimo: deixe em branco.</p>
-   <label>Mora / multa cobrada<input name="mora" type="number" step="0.01" min="0" value="" placeholder="0,00"></label>
+   <label>Mora / multa cobrada<input name="mora" type="number" step="0.01" min="0" value="${r.lanc > 0 ? r.lanc.toFixed(2) : ''}" placeholder="0,00"></label>
    <label>${r.rot ? 'Amortização do principal' : 'Antecipação extra (abate o saldo)'}<input name="amort" type="number" step="0.01" min="0" placeholder="0,00"></label>
    <label>Observação<input name="obs"></label>
    <button class="btn gold" type="submit">Confirmar recebimento</button>
@@ -1584,7 +1640,7 @@ const num = v => v === '' || v == null ? 0 : +v;
 
 document.addEventListener('click', async e => {
   if (e.target.closest('a.wa')) return;
-  const t = e.target.closest('[data-close],[data-htab],[data-filt],[data-new-emp],[data-new-cli],[data-new-mov],[data-pay],[data-emp],[data-cli],[data-mov],[data-edit-emp],[data-del-pag],[data-del-emp],[data-del-cli],[data-del-mov],[data-fill],#bkp,#bkpc,#calcMora,[data-new-fec],[data-fec],[data-del-fec],[data-outros],[data-pnew],[data-pl],[data-del-pl],[data-inv],[data-new-inv],[data-del-inv],[data-pcfg],[data-pmes],[data-paporte],[data-rncli],[data-rnsel],[data-rnclear],#rnCalc,#rnGo,[data-rnundo],[data-rntaxa],[data-hcat],[data-hist],[data-hdoc],[data-hcli],[data-hclear],#hcsv,#hcsvc,[data-pmesgo],[data-transf],[data-ctedit],[data-addct],[data-rmct],[data-ctmov],[data-go],[data-presgate],[data-rsgtudo],[data-compra],[data-fat],[data-fatdespagar],[data-addcart],[data-rmcart],[data-renovar],[data-renfill],[data-restore-ok],[data-zero]');
+  const t = e.target.closest('[data-close],[data-htab],[data-filt],[data-new-emp],[data-new-cli],[data-new-mov],[data-pay],[data-emp],[data-cli],[data-mov],[data-edit-emp],[data-del-pag],[data-del-emp],[data-del-cli],[data-del-mov],[data-fill],#bkp,#bkpc,#calcMora,[data-new-fec],[data-fec],[data-del-fec],[data-outros],[data-pnew],[data-pl],[data-del-pl],[data-inv],[data-new-inv],[data-del-inv],[data-pcfg],[data-pmes],[data-paporte],[data-rncli],[data-rnsel],[data-rnclear],#rnCalc,#rnGo,[data-rnundo],[data-rntaxa],[data-hcat],[data-hist],[data-hdoc],[data-hcli],[data-hclear],#hcsv,#hcsvc,[data-pmesgo],[data-transf],[data-ctedit],[data-addct],[data-rmct],[data-ctmov],[data-go],[data-presgate],[data-rsgtudo],[data-compra],[data-fat],[data-fatdespagar],[data-addcart],[data-rmcart],[data-renovar],[data-renfill],[data-atu],[data-atumodo],[data-atuundo],[data-restore-ok],[data-zero]');
   if (e.target === $('#ov')) { close(); render.reopen = null; return; }
   if (!t) return; const d = t.dataset;
   if (d.close !== undefined) { close(); render.reopen = null; }
@@ -1638,10 +1694,18 @@ document.addEventListener('click', async e => {
   else if (d.outros) { const f = $('#ffec'); f.elements.outros.value = d.outros; fecPreview(); }
   else if (d.delFec) { if (t.dataset.sure) { if (await W(() => col('fechamentos').doc(d.delFec).delete(), 'Fechamento excluído')) close(); } else { t.dataset.sure = 1; t.textContent = 'Toque de novo para excluir'; } }
   else if (t.id === 'calcMora') {
-    const f = $('#fpag'), c = cfg(), base = +f.elements.valor.value || 0, dias = Math.max(0, Math.floor(+f.elements.dias.value || 0));
+    const f = $('#fpag'), c = cfg(), lanc = +f.dataset.lanc || 0, base = (+f.elements.valor.value || 0) + lanc, dias = Math.max(0, Math.floor(+f.elements.dias.value || 0));
     let m = base * c.mora * dias; const capped = c.teto > 0 && m > c.teto * base; if (capped) m = c.teto * base; m = r2(m);
-    f.elements.mora.value = m ? m.toFixed(2) : '';
-    $('#moraInfo').textContent = dias ? `${R$(base)} × ${pct(c.mora)} × ${dias} dia${dias > 1 ? 's' : ''} = ${R$(m)}${capped ? ' (limitado pelo teto)' : ''}. Pode ajustar o valor antes de confirmar.` : 'Zero dias: recebimento sem mora.';
+    f.elements.mora.value = (m + lanc) ? r2(m + lanc).toFixed(2) : '';
+    $('#moraInfo').textContent = (dias ? `${R$(base)} × ${pct(c.mora)} × ${dias} dia${dias > 1 ? 's' : ''} = ${R$(m)}${capped ? ' (limitado pelo teto)' : ''}` : 'Zero dias: sem mora nova') + (lanc ? ` + ${R$(lanc)} de mora já lançada` : '') + '. Pode ajustar o valor antes de confirmar.';
+  }
+  else if (d.atu) { e.stopPropagation(); render.reopen = null; sheetAtu(d.atu); }
+  else if (d.atumodo) { const f = $('#fatu'); if (f) { f.dataset.modo = d.atumodo; sheetAtu.upd?.(); (d.atumodo === 'fixo' ? f.elements.dia : f.elements.taxa).focus(); } }
+  else if (d.atuundo) {
+    const L = S.emp.find(x => x.id === d.atuundo), a = Array.isArray(L?.atu) ? L.atu : [], u = a[a.length - 1]; if (!u) return;
+    if (S.pag.some(p => p.emp === L.id && p.data >= u.data)) return toast('Há pagamento registrado depois desta atualização. Exclua-o antes de desfazer.');
+    if (t.dataset.sure) { if (await W(() => col('emprestimos').doc(L.id).update({ atu: a.slice(0, -1) }), 'Atualização desfeita')) sheetEmp(L.id); }
+    else { t.dataset.sure = 1; t.textContent = 'Toque de novo para desfazer'; }
   }
   else if (d.pay) { setTimeout(payContaSync, 0); e.stopPropagation(); render.reopen = null; sheetPay(d.pay); }
   else if (d.newEmp !== undefined) { render.reopen = null; sheetEmpForm(null); if (d.newEmp) { const s = $('#femp').elements.cliente; s.value = d.newEmp; onCliChange(); } }
@@ -1706,9 +1770,22 @@ document.addEventListener('submit', async e => {
       await col('emprestimos').doc(L.id).update({ situacao: 'substituido', sitAnterior: L.situacao || 'ativo', renegPara: ref.id, renegData: data, saldoTransferido: x.novo });
     }, 'Renovação registrada · ' + cliNome(L.cliente));
     if (ok) { render.reopen = null; setTimeout(() => novoId && sheetEmp(novoId), 60); }
+  } else if (f.id === 'fatu') {
+    const L = S.emp.find(e => e.id === f.dataset.eid), r = R(L.id), x = atuCalc(f, r.atraso);
+    if (!(r.atraso > 0)) return toast('Este contrato não está mais em atraso.');
+    if (x.modo === 'fixo' && x.dias > 0 && !(x.dia > 0)) return toast('Informe o valor da diária.');
+    const rec = { data: TISO, q0: r.quitadas, k: r.vencidas, dias: x.dias, modo: x.modo, taxa: x.modo === 'pct' ? x.taxa : null, porDia: x.modo === 'fixo' ? x.dia : null,
+      base: r2(r.atraso), mora: x.mora, total: x.total, obs: g('obs').trim(), criado: new Date().toISOString() };
+    const padrao = f.elements.padrao.checked && L.cliente && cliById(L.cliente);
+    const ok = await W(async () => {
+      await col('emprestimos').doc(L.id).update({ atu: [...(Array.isArray(L.atu) ? L.atu : []), rec] });
+      if (padrao) await col('clientes').doc(L.cliente).update({ moraModo: x.modo, moraTaxa: x.modo === 'pct' ? x.taxa : null, moraDia: x.modo === 'fixo' ? x.dia : null });
+    }, `Débito atualizado · ${cliNome(L.cliente)} · ${R$(x.total)} vence hoje`);
+    if (ok) { close(); render.reopen = null; }
   } else if (f.id === 'fpag') {
     const body = { emp: f.dataset.eid, data: g('data'), valor: num(g('valor')), mora: num(g('mora')), amort: num(g('amort')), forma: g('forma'), ...(() => { const [lado, id] = (g('conta') || 'e:' + CT_E()[0].id).split(/:(.*)/); return lado === 'p' ? { contaPes: id, destino: 'pessoal' } : { conta: id }; })(), contaForca: !!f.elements.forca?.checked, obs: g('obs').trim(), criado: new Date().toISOString() };
     if (body.valor + body.mora + body.amort <= 0) return toast('Informe um valor.');
+    const lancAb = R(body.emp).lanc || 0; if (lancAb > 0 && body.mora > 0) body.moraLanc = r2(Math.min(body.mora, lancAb));
     if (await W(() => col('pagamentos').add(body), 'Recebimento registrado')) { close(); render.reopen = null; }
   } else if (f.id === 'fcli') {
     const nome = g('nome').trim(); if (!nome) return toast('Informe o nome.'); const id = f.dataset.id;
