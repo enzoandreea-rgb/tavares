@@ -14,13 +14,13 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <style>
-@font-face{font-family:'Montserrat';font-style:normal;font-weight:400;font-display:swap;src:url(fonts/montserrat-latin-400-normal.woff2) format('woff2')}
-@font-face{font-family:'Montserrat';font-style:normal;font-weight:500;font-display:swap;src:url(fonts/montserrat-latin-500-normal.woff2) format('woff2')}
-@font-face{font-family:'Montserrat';font-style:normal;font-weight:600;font-display:swap;src:url(fonts/montserrat-latin-600-normal.woff2) format('woff2')}
-@font-face{font-family:'Montserrat';font-style:normal;font-weight:700;font-display:swap;src:url(fonts/montserrat-latin-700-normal.woff2) format('woff2')}
-@font-face{font-family:'Playfair Display';font-style:normal;font-weight:500;font-display:swap;src:url(fonts/playfair-display-latin-500-normal.woff2) format('woff2')}
-@font-face{font-family:'Playfair Display';font-style:normal;font-weight:600;font-display:swap;src:url(fonts/playfair-display-latin-600-normal.woff2) format('woff2')}
-@font-face{font-family:'Playfair Display';font-style:normal;font-weight:700;font-display:swap;src:url(fonts/playfair-display-latin-700-normal.woff2) format('woff2')}
+@font-face{font-family:'Montserrat';font-style:normal;font-weight:400;font-display:swap;src:url(montserrat-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Montserrat';font-style:normal;font-weight:500;font-display:swap;src:url(montserrat-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'Montserrat';font-style:normal;font-weight:600;font-display:swap;src:url(montserrat-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Montserrat';font-style:normal;font-weight:700;font-display:swap;src:url(montserrat-latin-700-normal.woff2) format('woff2')}
+@font-face{font-family:'Playfair Display';font-style:normal;font-weight:500;font-display:swap;src:url(playfair-display-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'Playfair Display';font-style:normal;font-weight:600;font-display:swap;src:url(playfair-display-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Playfair Display';font-style:normal;font-weight:700;font-display:swap;src:url(playfair-display-latin-700-normal.woff2) format('woff2')}
 
 #splash{position:fixed;inset:0;z-index:200;display:grid;place-items:center;align-content:center;background:#02050B;color:#EEE9DB;cursor:pointer;overflow:hidden;-webkit-user-select:none;user-select:none;transition:opacity .9s cubic-bezier(.4,0,.2,1) .1s,visibility 1s}
 #splash.out{opacity:0;visibility:hidden;pointer-events:none}
@@ -443,15 +443,16 @@ function calc(L, pays, cfg, today) {
   R.saldo = r2(R.saldo + R.lanc);
   R.prox = quitado ? null : (R.sched[R.quitadas] || (R.lanc > 0 && ult ? P(ult.data) : null));
   R.dias = R.atraso > 0.005 && R.prox ? Math.max(0, diff(today, R.prox)) : 0;
-  let mora = 0;
+  let mora = 0; R.itensAtraso = [];
   if (R.atraso > 0.005) for (let k = R.quitadas; k < R.vencidas; k++) {
     const owed = R.parcela - (k === R.quitadas ? parcial : 0);
+    R.itensAtraso.push({ owed, d: diff(today, R.sched[k]) });
     const d = Math.max(0, diff(today, R.sched[k]) - (cfg.tolerancia || 0));
     let m = owed * cfg.mora * d; if (cfg.teto > 0) m = Math.min(m, cfg.teto * R.parcela); mora += m;
   }
   if (R.lanc > 0 && ult) { // mora lançada não paga: volta a atrasar no dia seguinte à atualização e também gera mora
     const dl = diff(today, P(ult.data));
-    if (dl > 0) { R.atraso = r2(R.atraso + R.lanc); R.dias = Math.max(R.dias, dl); const dd = Math.max(0, dl - (cfg.tolerancia || 0)); let m = R.lanc * cfg.mora * dd; if (cfg.teto > 0) m = Math.min(m, cfg.teto * R.lanc); mora += m; }
+    if (dl > 0) { R.itensAtraso.push({ owed: R.lanc, d: dl }); R.atraso = r2(R.atraso + R.lanc); R.dias = Math.max(R.dias, dl); const dd = Math.max(0, dl - (cfg.tolerancia || 0)); let m = R.lanc * cfg.mora * dd; if (cfg.teto > 0) m = Math.min(m, cfg.teto * R.lanc); mora += m; }
   }
   R.mora = r2(mora);
   R.parcelasAtraso = R.atraso > 0.005 ? R.vencidas - R.quitadas : 0;
@@ -1187,11 +1188,12 @@ function atuInfo(L, r) {
   <p class="note">Mora lançada em aberto: <b>${R$(r.lanc)}</b> de ${R$(r.lancTotal)} lançados.</p>
   <button class="btn del" data-atuundo="${L.id}" style="margin-bottom:6px">Desfazer última atualização</button>`;
 }
-function atuCalc(f, base) {
-  const dias = Math.max(0, Math.floor(num(f.elements.dias.value))), modo = f.dataset.modo === 'fixo' ? 'fixo' : 'pct';
-  const taxa = num(f.elements.taxa.value) / 100, dia = num(f.elements.dia.value);
-  const mora = r2(modo === 'fixo' ? dia * dias : base * taxa * dias);
-  return { dias, modo, taxa, dia, mora, total: r2(base + mora) };
+function atuCalc(f, r) { // % ao dia: cada parcela (e a mora já lançada) pelos seus próprios dias; dias editados deslocam todos igualmente
+  const base = r.atraso, dias = Math.max(0, Math.floor(num(f.elements.dias.value))), modo = f.dataset.modo === 'fixo' ? 'fixo' : 'pct';
+  const taxa = num(f.elements.taxa.value) / 100, dia = num(f.elements.dia.value), ajuste = r.dias - dias;
+  const itens = r.itensAtraso && r.itensAtraso.length ? r.itensAtraso : [{ owed: base, d: r.dias }];
+  const mora = r2(modo === 'fixo' ? dia * dias : itens.reduce((s, it) => s + it.owed * taxa * Math.max(0, it.d - ajuste), 0));
+  return { dias, modo, taxa, dia, mora, total: r2(base + mora), multi: itens.length > 1 };
 }
 function sheetAtu(id) {
   const L = S.emp.find(e => e.id === id), r = R(id), cli = cliById(L.cliente), c = cfg();
@@ -1199,8 +1201,7 @@ function sheetAtu(id) {
   const modo = cli?.moraModo === 'fixo' ? 'fixo' : 'pct', taxa = cli?.moraTaxa != null ? +cli.moraTaxa : c.mora, dia = +cli?.moraDia || 0;
   open(`<h2>Atualizar débito</h2><p class="note">${esc(cli?.nome || '')} · ${R$(r.atraso)} em atraso${r.lanc > 0 ? ` (inclui ${R$(r.lanc)} de mora já lançada)` : ''} · venceu ${dBR(r.prox)}${cli?.moraModo ? ' · condição padrão deste cliente carregada' : ''}</p>
   <form id="fatu" class="stack" data-eid="${id}" data-modo="${modo}">
-   <label>Dias de atraso a cobrar<input name="dias" type="number" min="0" step="1" inputmode="numeric" value="${r.dias}"></label>
-   <p class="note" style="margin-top:-6px">Atraso real: ${r.dias} dia${r.dias === 1 ? '' : 's'}. Pode ajustar conforme o combinado com o cliente.</p>
+   <label>Dias de atraso a cobrar · real: ${r.dias}<input name="dias" type="number" min="0" step="1" inputmode="numeric" value="${r.dias}"></label>
    <div class="chips"><button type="button" class="chip ${modo === 'pct' ? 'on' : ''}" data-atumodo="pct">% ao dia</button><button type="button" class="chip ${modo === 'fixo' ? 'on' : ''}" data-atumodo="fixo">R$ por dia</button></div>
    <label id="atuTx"${modo === 'fixo' ? ' style="display:none"' : ''}>Mora ao dia (%)<input name="taxa" type="number" step="0.01" min="0" inputmode="decimal" value="${r2(taxa * 100)}"></label>
    <label id="atuDia"${modo === 'pct' ? ' style="display:none"' : ''}>Valor da diária de atraso (R$)<input name="dia" type="number" step="0.01" min="0" inputmode="decimal" value="${dia ? dia.toFixed(2) : ''}" placeholder="0,00"></label>
@@ -1209,11 +1210,11 @@ function sheetAtu(id) {
    <label>Observação<input name="obs" placeholder="opcional"></label>
    <button class="btn gold" type="submit">Confirmar atualização</button>
   </form>`);
-  const f = $('#fatu'), upd = () => { const x = atuCalc(f, r.atraso);
+  const f = $('#fatu'), upd = () => { const x = atuCalc(f, r);
     $('#atuTx').style.display = x.modo === 'pct' ? '' : 'none'; $('#atuDia').style.display = x.modo === 'fixo' ? '' : 'none';
     f.querySelectorAll('[data-atumodo]').forEach(b => b.classList.toggle('on', b.dataset.atumodo === x.modo));
     $('#atuInfo').innerHTML = `<span>Novo débito · vence hoje (${dBR(TISO)})</span><b>${R$(x.total)}</b>
-     <em>${R$(r.atraso)} em atraso + mora ${R$(x.mora)} (${x.dias} dia${x.dias === 1 ? '' : 's'} × ${x.modo === 'fixo' ? R$(x.dia) + ' por dia' : pct(x.taxa) + ' ao dia sobre ' + R$(r.atraso)})</em>
+     <em>${R$(r.atraso)} em atraso + mora ${R$(x.mora)} (${x.modo === 'fixo' ? `${x.dias} dia${x.dias === 1 ? '' : 's'} × ${R$(x.dia)} por dia` : x.multi ? `${pct(x.taxa)} ao dia sobre cada parcela, contando os dias de atraso de cada uma` : `${x.dias} dia${x.dias === 1 ? '' : 's'} × ${pct(x.taxa)} ao dia sobre ${R$(r.atraso)}`})</em>
      <em>Sai de "Em atraso". Se não pagar hoje, volta amanhã para o atraso com a mora correndo sobre ${R$(x.total)}.</em>`;
     f.querySelector('[type=submit]').disabled = false; };
   for (const n of ['dias', 'taxa', 'dia']) f.elements[n].addEventListener('input', upd);
@@ -1771,7 +1772,7 @@ document.addEventListener('submit', async e => {
     }, 'Renovação registrada · ' + cliNome(L.cliente));
     if (ok) { render.reopen = null; setTimeout(() => novoId && sheetEmp(novoId), 60); }
   } else if (f.id === 'fatu') {
-    const L = S.emp.find(e => e.id === f.dataset.eid), r = R(L.id), x = atuCalc(f, r.atraso);
+    const L = S.emp.find(e => e.id === f.dataset.eid), r = R(L.id), x = atuCalc(f, r);
     if (!(r.atraso > 0)) return toast('Este contrato não está mais em atraso.');
     if (x.modo === 'fixo' && x.dias > 0 && !(x.dia > 0)) return toast('Informe o valor da diária.');
     const rec = { data: TISO, q0: r.quitadas, k: r.vencidas, dias: x.dias, modo: x.modo, taxa: x.modo === 'pct' ? x.taxa : null, porDia: x.modo === 'fixo' ? x.dia : null,
